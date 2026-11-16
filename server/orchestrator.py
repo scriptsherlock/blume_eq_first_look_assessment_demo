@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .agents import extractor, modeller, questioner, researcher, sceptic
+from . import llm
+from .llm import SearchUnavailable
 from .evaluator import evaluate
 from .fetch import fetch
 from .schema import Claim, ModellerOut, Node, Objection, Verdict
@@ -66,6 +68,7 @@ def _emit_model(log: RunLog, st: RunState) -> None:
 def run(run_id: str, url: str) -> None:
     log = RunLog(run_id)
     st = STATES.setdefault(run_id, RunState())
+    llm.FALLBACK_USED.clear()
     try:
         log.emit("run_started", url=url, mode="live", label=LABEL)
 
@@ -79,11 +82,19 @@ def run(run_id: str, url: str) -> None:
         if not st.claims:
             raise RuntimeError("No claims with verifiable quotes were found on the page.")
 
+        search_ok = True
         for c in st.claims:
-            log.emit("agent_started", "researcher", claim_id=c.id)
-            evidence = researcher.run(st.company, c)
-            for e in evidence:
-                log.emit("evidence_added", "researcher", evidence=e.model_dump())
+            evidence = []
+            if search_ok:
+                log.emit("agent_started", "researcher", claim_id=c.id)
+                try:
+                    evidence = researcher.run(st.company, c)
+                except SearchUnavailable as e:
+                    search_ok = False
+                    log.emit("agent_finished", "researcher", search_unavailable=True,
+                             note=f"Web search unavailable ({e}). Claims are judged without independent evidence.")
+                for e in evidence:
+                    log.emit("evidence_added", "researcher", evidence=e.model_dump())
 
             log.emit("agent_started", "sceptic", claim_id=c.id)
             objs, verdict = sceptic.run(st.company, c, evidence)
@@ -96,7 +107,8 @@ def run(run_id: str, url: str) -> None:
         log.emit("agent_started", "modeller")
         st.model = modeller.run(st.company, st.claims, st.verdicts, st.objections)
         _emit_model(log, st)
-        log.emit("run_finished")
+        log.emit("run_finished", models={"main": llm.MODEL_FAST, "strong": llm.MODEL_STRONG,
+                                         "fallback_calls": len(llm.FALLBACK_USED)})
     except Exception as e:  # surface every failure on the canvas
         log.emit("error", message=f"{type(e).__name__}: {e}")
 

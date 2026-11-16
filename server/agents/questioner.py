@@ -15,10 +15,15 @@ def run(company: str, assumptions: list[Assumption], evaluation: Evaluation, obj
         for s in evaluation.sensitivity
     )
     obj = "\n".join(f"- (severity {o.severity}) {o.text}" for o in objections) or "- none"
+    ranks = {s.assumption_id: s.rank for s in evaluation.sensitivity}
     out = llm.generate_json(prompt("questioner", company=company, ranked=ranked, objections=obj),
                             QuestionerOut, model=llm.MODEL_FAST)
-    ranks = {s.assumption_id: s.rank for s in evaluation.sensitivity}
-    qs = [q for q in out.questions if q.targets_assumption_id in by_id][:5]
+    qs, seen = [], set()
+    for q in out.questions:
+        if q.targets_assumption_id in by_id and q.targets_assumption_id not in seen:
+            seen.add(q.targets_assumption_id)
+            qs.append(q)
+    qs = sorted(qs, key=lambda q: ranks[q.targets_assumption_id])[:5]
     for q in qs:
         q.sensitivity_rank = ranks[q.targets_assumption_id]
     return qs

@@ -27,18 +27,15 @@ Every run is saved as an event log. The front end is a pure function of that log
 
 ## Status
 
-First pass. Working end to end:
+First pass, running on `gemini-3.5-flash-lite`.
 
-- backend pipeline, all five agents, evaluator, run store and SSE streaming
-- canvas, agent timeline, claim and assumption drawers, assumption editing, what-if box, founder questions with copy-as-email, replay controls
-- 22 Python tests and a browser/server evaluator parity test, all runnable without a key
+- **Saved runs are real agent output.** Vyntelligence and CameraMatics were recorded from live runs on Blume's public posts. All their quotes are checked against the saved page text, and the browser and server evaluators agree on every number.
+- **Web search was not available on the key used.** The free Gemini tier gave no Google Search quota, so the Researcher was skipped and every claim was judged without independent evidence. The canvas says so. With a key that has search quota, the Researcher runs automatically.
+- **Guardrails added after reading real output:** the value and impact roots must share an input (the Modeller gets one repair attempt otherwise), questions must target different assumptions, and calls retry on rate limits and overload, falling back to `gemini-3.1-flash-lite` if 3.5 stays unavailable.
+- **SPARETECH is not shown.** Its run treated a dollar figure as pounds and invented a spend-based emission factor roughly 100x too high, giving millions of tonnes for one company. The next guardrails to add are currency checks and a cited table of spend-based emission factors.
+- 30 Python tests and a browser/server evaluator parity test, all runnable without a key.
 
-**Not yet done:**
-
-- **Live runs have not been recorded yet.** The only saved run, *Vyntelligence (sample)*, is hand-authored to show the interface and is labelled as such on screen. Its quotes are checked against the source page and its numbers are computed by the evaluator, but its claims, objections, model and questions were written by hand, not by the agents.
-- Prompt tuning against real Gemini output.
-- CameraMatics and SPARETECH runs.
-- Unit-consistency checks in the evaluator.
+Not done yet: unit-consistency checks in the evaluator, the currency and spend-factor guardrails above, and a recorded run with web search on.
 
 ## Run it
 
@@ -87,4 +84,4 @@ tests/         evaluator, replay, fetch and orchestrator tests
 
 ## Why Gemini
 
-The agents run on Gemini because that is the key I had. All model calls go through `server/llm.py`, so moving to Claude means rewriting that one file. The project itself was built with Claude Code.
+The agents run on Gemini Flash-Lite because that is the key I had. All model calls go through `server/llm.py`, so moving to Claude means rewriting that one file. The project itself was built with Claude Code.

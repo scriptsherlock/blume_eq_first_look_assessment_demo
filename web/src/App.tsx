@@ -218,14 +218,15 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
   const edited = useMemo(() => new Set(Object.keys(overrides)), [overrides]);
 
   // Re-fit when the graph grows or the right-hand column opens or closes.
+  // Re-fit when the graph grows, the run finishes, or the right-hand column opens or closes.
+  // Debounced so it runs once the stream pauses and React Flow has measured the new cards.
   const rf = useReactFlow();
   const sideOpen = !!selected || (showQs && s.questions.length > 0);
-  const fitKey = `${nodes.length}|${sideOpen}`;
-  const lastFit = useRef("");
+  const fitKey = `${nodes.length}|${sideOpen}|${s.finished}`;
   useEffect(() => {
-    if (fitKey === lastFit.current) return;
-    lastFit.current = fitKey;
-    const t = setTimeout(() => rf.fitView({ duration: 500, padding: 0.08 }), 80);
+    const t = setTimeout(() => {
+      requestAnimationFrame(() => rf.fitView({ duration: 300, padding: 0.08 }));
+    }, 350);
     return () => clearTimeout(t);
   }, [fitKey, rf]);
 
@@ -315,6 +316,9 @@ function Rail({ s, onHome }: { s: State; onHome: () => void }) {
         {s.finished && !s.error && <div className="step done"><div className="step-agent">Done</div></div>}
         {s.error && <div className="error small">{s.error}</div>}
       </div>
+      {s.notes.map((n) => (
+        <div key={n} className="note small">{n}</div>
+      ))}
       {s.dropped.length > 0 && (
         <div className="muted small">
           {s.dropped.length} claim(s) dropped: quote not found verbatim on the page.

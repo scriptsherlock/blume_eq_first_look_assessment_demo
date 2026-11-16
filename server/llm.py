@@ -23,6 +23,16 @@ T = TypeVar("T", bound=BaseModel)
 MODEL_FAST = os.getenv("MODEL_FAST", "gemini-2.5-flash")
 MODEL_STRONG = os.getenv("MODEL_STRONG", "gemini-2.5-pro")
 CALL_DELAY_S = float(os.getenv("CALL_DELAY_S", "1.0"))
+# Set SEARCH=off to skip Google Search grounding (e.g. on API tiers without search quota).
+SEARCH_ENABLED = os.getenv("SEARCH", "on").lower() not in ("off", "0", "false")
+RATE_LIMIT_RETRIES = 3
+# Used only when the main model stays overloaded (503) after retries.
+MODEL_FALLBACK = os.getenv("MODEL_FALLBACK", "")
+FALLBACK_USED: list[str] = []  # model ids actually used as fallback, for the run log
+
+
+class SearchUnavailable(RuntimeError):
+    """Google Search grounding is not available for this key or model."""
 
 _client = None
 
@@ -57,6 +67,32 @@ def _strip_fences(text: str) -> str:
     return t.strip()
 
 
+def _is_quota(e: Exception) -> bool:
+    return getattr(e, "code", None) == 429 or "RESOURCE_EXHAUSTED" in str(e)
+
+
+def _is_transient(e: Exception) -> bool:
+    return _is_quota(e) or getattr(e, "code", None) in (500, 503) or "UNAVAILABLE" in str(e)
+
+
+def _call(**kw):
+    """generate_content with backoff on rate limits (429) and temporary overload (500/503)."""
+    for attempt in range(RATE_LIMIT_RETRIES + 1):
+        time.sleep(CALL_DELAY_S)
+        try:
+            return client().models.generate_content(**kw)
+        except Exception as e:
+            if not _is_transient(e):
+                raise
+            if attempt == RATE_LIMIT_RETRIES:
+                overloaded = not _is_quota(e)
+                if overloaded and MODEL_FALLBACK and kw.get("model") != MODEL_FALLBACK:
+                    FALLBACK_USED.append(MODEL_FALLBACK)
+                    return _call(**{**kw, "model": MODEL_FALLBACK})
+                raise
+            time.sleep(15 * (attempt + 1))
+
+
 def generate_json(prompt: str, schema: type[T], model: str | None = None, system: str | None = None) -> T:
     """Ask for JSON matching `schema`. Retries once with the validation error appended."""
     from google.genai import types
@@ -65,8 +101,7 @@ def generate_json(prompt: str, schema: type[T], model: str | None = None, system
     attempt_prompt = prompt
     last_err: Exception | None = None
     for _ in range(2):
-        time.sleep(CALL_DELAY_S)
-        resp = client().models.generate_content(
+        resp = _call(
             model=model,
             contents=attempt_prompt,
             config=types.GenerateContentConfig(
@@ -94,16 +129,38 @@ def generate_grounded(prompt: str, model: str | None = None, system: str | None 
     """
     from google.genai import types
 
-    time.sleep(CALL_DELAY_S)
-    resp = client().models.generate_content(
-        model=model or MODEL_FAST,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=system,
-            tools=[types.Tool(google_search=types.GoogleSearch())],
-            temperature=0.3,
-        ),
-    )
+    if not SEARCH_ENABLED:
+        raise SearchUnavailable("search is turned off (SEARCH=off)")
+    try:
+        time.sleep(CALL_DELAY_S)
+        resp = client().models.generate_content(
+            model=model or MODEL_FAST,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                temperature=0.3,
+            ),
+        )
+    except Exception as e:
+        # Free tiers often have no Google Search quota; one retry separates that from a per-minute limit.
+        if not _is_quota(e):
+            raise
+        time.sleep(30)
+        try:
+            resp = client().models.generate_content(
+                model=model or MODEL_FAST,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system,
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                    temperature=0.3,
+                ),
+            )
+        except Exception as e2:
+            if _is_quota(e2):
+                raise SearchUnavailable("Google Search grounding has no quota on this API key") from e2
+            raise
     sources: list[Source] = []
     seen: set[str] = set()
     for cand in resp.candidates or []:

@@ -134,3 +134,4 @@ a { color: var(--accent); }
 .edge-contradicts .react-flow__edge-path { stroke: var(--bad); }
 .edge-objection .react-flow__edge-path { stroke: #d9822b; }
 .edge-tree .react-flow__edge-path { stroke: var(--accent); }
+.note { background: #fbf0dc; color: #7a5212; padding: 8px 10px; border-radius: 6px; line-height: 1.4; }

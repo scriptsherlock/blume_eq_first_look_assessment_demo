@@ -34,13 +34,14 @@ export interface State {
   activeAgent: string | null;
   finished: boolean;
   error: string | null;
+  notes: string[];
 }
 
 export const empty: State = {
   runId: "", url: "", mode: "", label: "", note: "", company: "",
   claims: [], dropped: [], evidence: [], objections: [], verdicts: {},
   revision: 0, assumptions: [], treeNodes: [], roots: {}, rationale: "", questions: [],
-  steps: [], activeAgent: null, finished: false, error: null,
+  steps: [], activeAgent: null, finished: false, error: null, notes: [],
 };
 
 function resetModelIfNewRevision(s: State, rev: number | undefined): State {
@@ -64,6 +65,7 @@ export function reduce(s: State, e: RunEvent): State {
     }
     case "agent_finished":
       return { ...s, company: p.company ?? s.company, dropped: p.dropped ?? s.dropped,
+               notes: p.note ? [...s.notes, p.note] : s.notes,
                steps: s.steps.map((x) => (x.agent === e.agent ? { ...x, done: true } : x)) };
     case "claim_added":
       return { ...s, claims: [...s.claims, p.claim] };

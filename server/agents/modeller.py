@@ -37,10 +37,35 @@ def _claims_block(claims: list[Claim], verdicts: dict[str, Verdict], objections:
     return "\n".join(lines)
 
 
+def _inputs_under(tree, root: str) -> set[str]:
+    nodes = {n.id: n for n in tree.nodes}
+    seen, stack, inputs = set(), [root], set()
+    while stack:
+        nid = stack.pop()
+        if nid in seen or nid not in nodes:
+            continue
+        seen.add(nid)
+        if nodes[nid].op == "input":
+            inputs.add(nid)
+        stack.extend(nodes[nid].children)
+    return inputs
+
+
+def check(out: ModellerOut) -> None:
+    """Generic tree checks, plus the rule this demo exists to show: one shared driver."""
+    validate(out.tree, out.assumptions)
+    shared = _inputs_under(out.tree, out.tree.root_value_id) & _inputs_under(out.tree, out.tree.root_impact_id)
+    if not shared:
+        raise TreeError(
+            "the value root and the impact root share no input. Derive both from the same physical driver "
+            "(for example: attributable miles avoided -> visits avoided -> GBP, and the same miles -> tCO2e)"
+        )
+
+
 def _repair(p: str) -> ModellerOut:
     out = llm.generate_json(p, ModellerOut, model=llm.MODEL_STRONG)
     try:
-        validate(out.tree, out.assumptions)
+        check(out)
         return out
     except TreeError as e:
         out = llm.generate_json(
@@ -48,7 +73,7 @@ def _repair(p: str) -> ModellerOut:
             f"Previous model:\n{out.model_dump_json()}\nReturn a corrected model.",
             ModellerOut, model=llm.MODEL_STRONG,
         )
-        validate(out.tree, out.assumptions)
+        check(out)
         return out
 
 

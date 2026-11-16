@@ -6,8 +6,9 @@ The model's assumptions, ranked by how much each one moves the result (rank 1 mo
 Open objections from the investment committee:
 {objections}
 
-Write exactly 5 questions to ask the founder. Each must:
-- target one assumption by id (prefer high-ranked judgement calls and assumptions with severe objections),
+Write 5 questions to ask the founder (fewer if there are fewer than 5 assumptions worth asking about). Each must:
+- target a **different** assumption by id (prefer high-ranked judgement calls and assumptions with severe objections; skip pure unit conversions),
+- ask for the underlying data, never ask the founder to justify a number our model assumed (they did not make it),
 - ask for something the founder can actually answer or send (a number, a definition, a customer reference, a data extract),
 - be one sentence, specific and polite.
 

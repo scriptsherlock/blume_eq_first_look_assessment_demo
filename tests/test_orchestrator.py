@@ -99,3 +99,25 @@ def test_whatif_bumps_revision(stubbed):
 def test_whatif_on_unknown_run_reports_error(stubbed):
     orchestrator.whatif("ffffffffff", "anything")
     assert store.RunLog("ffffffffff").events[-1]["type"] == "error"
+
+
+def test_run_continues_when_search_is_unavailable(stubbed, monkeypatch):
+    def no_search(*a, **k):
+        raise llm.SearchUnavailable("no quota")
+    monkeypatch.setattr(llm, "generate_grounded", no_search)
+    orchestrator.run("abc1234569", URL)
+    evs = store.RunLog("abc1234569").events
+    assert evs[-1]["type"] == "run_finished"
+    assert not [e for e in evs if e["type"] == "evidence_added"]
+    notes = [e["payload"].get("note") for e in evs if e["type"] == "agent_finished" and e["agent"] == "researcher"]
+    assert notes and "unavailable" in notes[0]
+    assert [e for e in evs if e["type"] == "verdict_set"]
+
+
+def test_modeller_rejects_trees_without_a_shared_driver():
+    from server.evaluator import TreeError
+    out = fake_json("", ModellerOut)
+    modeller.check(out)  # shares n1
+    out.tree.nodes[4].children = ["n3", "n3"]  # impact no longer uses miles
+    with pytest.raises(TreeError, match="share no input"):
+        modeller.check(out)

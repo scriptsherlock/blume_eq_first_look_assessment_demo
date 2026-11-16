@@ -198,7 +198,7 @@ def main() -> None:
     emit("agent_finished", "questioner")
     emit("run_finished")
 
-    out = ROOT / "web" / "public" / "replays" / "sample-vyntelligence.jsonl"
+    out = ROOT / "runs" / "sample-vyntelligence.jsonl"  # dev fixture, not shown on the start screen
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(json.dumps(e, ensure_ascii=False) for e in events) + "\n", encoding="utf-8")
     print(f"wrote {out} ({len(events)} events)")
