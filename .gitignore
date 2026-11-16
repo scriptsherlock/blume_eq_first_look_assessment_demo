@@ -1,0 +1,19 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# live run logs (copy good ones into web/public/replays with scripts/record_replay.py)
+runs/
+
+# web
+web/node_modules/
+web/dist/
+
+# private application notes, not part of the demo
+Investor AI pain points and niches.md
+plan.md

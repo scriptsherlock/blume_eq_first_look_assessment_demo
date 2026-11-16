@@ -1,0 +1,35 @@
+URL: https://www.blumeequity.com/insights/blume-invests-in-sparetech
+TITLE: Blume Equity and Insight Partners co-lead SPARETECH's Series B to help manufacturers cut spare parts inventory | Blume Equity
+FETCHED: 2026-11-16
+
+SPARETECH's AI aims to cut manufacturers' spare parts inventory by 60% within three years, without risking downtime.
+
+London, UK – 10th November 2026 – Blume Equity today announced that it has co-led a $20 million Series B in SPARETECH, the German-headquartered provider of enterprise AI for spare parts management. Insight Partners co-led the round, with participation from Headline. Insight and Headline are both existing investors in SPARETECH.
+
+Spare parts management is one of manufacturing's most persistent inefficiencies. A single stockout can halt production and idle an entire line, so plants hold extensive inventories as a safeguard. SPARETECH's 2026 benchmark report puts the average value of spare parts inventory at $169 million per company, leaving significant capital sitting on the shelf.
+
+SPARETECH is moving the market beyond insights and recommendations towards measurable outcomes: lower inventory with the same uptime. Its AI makes sure the right part is available when a plant needs it, even if that part sits on another company's shelf.
+
+SPARETECH has grown revenue fivefold since the end of 2023. Over the same period, its catalogue has grown to more than 40 million verified parts, and its network to 15,000 manufacturer and supplier partners. A global rollout for Nestlé, a SPARETECH customer, put 320 plants across 70 countries live in less than a year.
+
+Blume Equity has been tracking SPARETECH since 2024, as the company was a strong fit with its focus on smarter industry and more climate-resilient economies, and began discussions in 2026.
+
+SPARETECH will use the funding to continue building the AI that secures spare parts availability for industrial companies, expand its presence in North America and new regions, and deepen its work with existing customers.
+
+SPARETECH's enterprise AI software empowers global manufacturers to reduce their spare parts spend and inventory. Built on verified original manufacturer data, the platform standardises material master data, right-sizes inventory across plants, and enables sourcing and surplus resale across the network. Maintenance and procurement teams know what they have, get what they need, and sell what they don't. Trusted by manufacturers such as Nestlé, Porsche, VW, Bosch, and Sanofi, the company is moving towards its vision of a zero-waste industrial sharing economy. Learn more at sparetech.io.
+
+Blume Equity is a European growth equity firm based in London and Amsterdam, backing technology companies that build cleaner energy systems, smarter industry, and more climate-resilient economies. Its team works closely with founders to help businesses scale and create long-term value.
+
+Insight Partners is a global AI and software investor partnering with high-growth technology, software, and internet startup and scale-up companies that are driving transformative change in their industries. The firm has invested in more than 900 companies worldwide and has seen over 55 portfolio companies achieve an IPO, with over $90B in regulatory assets under management as of June 2026. Headquartered in New York City, Insight has a global presence with leadership in London, Tel Aviv, and the Bay Area.
+
+Martin Weber, CEO and Co-Founder, SPARETECH:
+
+“Every customer we work with wants the same thing: less inventory on the shelf and the production line running. That is the problem we are going to solve, and our goal is to cut our customers' spare parts inventory by 60% in the next three years, while securing the same uptime.”
+
+Martin Weber and Dr. Lukas Biedermann, Co-Founders, SPARETECH:
+
+“From our first conversation, Michelle and the Blume team not only understood the industrial world we operate in, but also shared our vision to empower the zero-waste industrial sharing economy. Less inventory on the shelf means more capital for manufacturers and less waste for the planet. We’re proud to have Blume with us on that journey.”
+
+Michelle Capiod, Co-Founding Partner, Blume Equity:
+
+“SPARETECH is exactly the kind of business we back. Idle spare parts are a large, overlooked pool of wasted resources, and putting them back to work gives manufacturers a measurable return and the planet less waste. We are delighted to partner with Martin, Lukas, and the team as they scale.”

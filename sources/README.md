@@ -1,0 +1,1 @@
+Article text from public Blume Equity pages, saved on 2026-11-16 so tests can check that every extracted quote appears verbatim in its source. Each file starts with the page URL. Not used at runtime; live runs fetch the page.

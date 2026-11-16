@@ -1,0 +1,11 @@
+id,vehicle,size,fuel,unit,ghg_unit,factor_2025
+4_301_3069_4_1,Cars (by size),Average car,Diesel,km,kg CO2e,0.17304
+4_301_3074_4_1,Cars (by size),Average car,Unknown,km,kg CO2e,0.16725
+4_301_3069_9_1,Cars (by size),Average car,Diesel,miles,kg CO2e,0.27849
+4_301_3074_9_1,Cars (by size),Average car,Unknown,miles,kg CO2e,0.26915
+5_303_3102_4_1,Vans,Average (up to 3.5 tonnes),Diesel,km,kg CO2e,0.25561
+5_303_3106_4_1,Vans,Average (up to 3.5 tonnes),Unknown,km,kg CO2e,0.2543
+5_303_3102_9_1,Vans,Average (up to 3.5 tonnes),Diesel,miles,kg CO2e,0.41138
+5_303_3106_9_1,Vans,Average (up to 3.5 tonnes),Unknown,miles,kg CO2e,0.40926
+5_304_3140_4_1,HGV (all diesel),All HGVs,Diesel,km,kg CO2e,0.89121
+5_304_3140_9_1,HGV (all diesel),All HGVs,Diesel,miles,kg CO2e,1.43425
