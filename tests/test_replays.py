@@ -95,3 +95,21 @@ class TestReplay:
         assert all(p["evidence"]["claim_id"] in ids for p in of(evs, "evidence_added"))
         assert all(p["objection"]["claim_id"] in ids for p in of(evs, "objection_added"))
         assert {p["verdict"]["claim_id"] for p in of(evs, "verdict_set")} <= ids
+
+
+@pytest.mark.parametrize("path", REPLAYS, ids=lambda p: p.stem)
+def test_final_model_passes_guardrails(path):
+    """Currency, emission-factor and exchange-rate rules hold for every published run."""
+    from server import references
+    from server.agents import modeller
+    from server.schema import Claim, ModellerOut
+
+    evs = events(path)
+    rec = of(evs, "tree_evaluated")[-1]
+    out = ModellerOut(
+        assumptions=[Assumption.model_validate(a) for a in last_revision(evs, "assumption_added", "assumption")],
+        tree=DriverTree.model_validate(rec["tree"]),
+        rationale=rec.get("rationale", ""),
+    )
+    claims = [Claim.model_validate(p["claim"]) for p in of(evs, "claim_added")]
+    assert modeller.problems(out, references.load(live_fx=False), claims) == []

@@ -8,5 +8,10 @@
     "file": "cameramatics.jsonl",
     "name": "CameraMatics",
     "blurb": "Fleet video telematics. No company-specific figures on the page, so the model runs on judgement calls and the questions ask for fleet data."
+  },
+  {
+    "file": "sparetech.jsonl",
+    "name": "SPARETECH",
+    "blurb": "Spare-parts AI for manufacturers. A dollar benchmark converted at the ECB rate, with a DEFRA spend-based emission factor."
   }
 ]

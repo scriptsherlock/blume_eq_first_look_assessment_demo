@@ -1,0 +1,113 @@
+id,sic_code,category,kgco2e_per_gbp,kgco2_per_gbp
+SIC-1,1,"Products of agriculture, hunting and related services",1.981395,0.559983
+SIC-2,2,"Products of forestry, logging and related services",0.153838,0.118119
+SIC-3,3,Fish and other fishing products; aquaculture products; support services to fishing,0.660928,0.513407
+SIC-5,5,Coal and lignite,1.518163,0.328818
+SIC-6,6,Crude petroleum and natural gas,0.243258,0.221535
+SIC-7,7,Metal ores,0.0,0.0
+SIC-8,8,Other mining and quarrying products,0.743798,0.562197
+SIC-9,9,Mining support services,1.545411,1.060534
+SIC-10.1,10.1,Preserved meat and meat products,0.713635,0.315526
+SIC-10.2 -3,10.2 -3,"Processed and preserved fish, crustaceans, molluscs, fruit and vegetables",0.607087,0.304698
+SIC-10.4,10.4,Vegetable and animal oils and fats,0.692111,0.329331
+SIC-10.5,10.5,Dairy products,0.905247,0.381722
+SIC-10.6,10.6,"Grain mill products, starches and starch products",0.64205,0.311873
+SIC-10.7,10.7,Bakery and farinaceous products,0.483777,0.268673
+SIC-10.8,10.8,Other food products,0.597304,0.290947
+SIC-10.9,10.9,Prepared animal feeds,0.813323,0.392379
+SIC-11.01-6,11.01-6,Alcoholic beverages,0.657796,0.312566
+SIC-11.07,11.07,Soft drinks,0.455983,0.249332
+SIC-12,12,Tobacco products,0.632553,0.27885
+SIC-13,13,Textiles,0.692816,0.545889
+SIC-14,14,Wearing apparel,0.692784,0.544088
+SIC-15,15,Leather and related products,0.731629,0.573505
+SIC-16,16,"Wood and of products of wood and cork, except furniture; articles of straw and plaiting materials",0.432747,0.372323
+SIC-17,17,Paper and paper products,0.66916,0.559716
+SIC-18,18,Printing and recording services,0.348493,0.304473
+SIC-19,19,Coke and refined petroleum products,1.045575,0.742996
+SIC-20.3,20.3,"Paints, varnishes and similar coatings, printing ink and mastics",0.993342,0.816276
+SIC-20.4,20.4,"Soap and detergents, cleaning and polishing preparations, perfumes and toilet preparations",0.728274,0.596551
+SIC-20.5,20.5,Other chemical products,0.993343,0.816277
+SIC-20A,20A,"Industrial gases, inorganics and fertilisers (all inorganic chemicals) - 20.11/13/15",0.955168,0.786123
+SIC-20B,20B,Petrochemicals - 20.14/16/17/60,0.993344,0.816278
+SIC-20C,20C,"Dyestuffs, agro-chemicals - 20.12/20",0.966083,0.795242
+SIC-21,21,Basic pharmaceutical products and pharmaceutical preparations,0.219005,0.17157
+SIC-22,22,Rubber and plastic products,0.643716,0.531918
+SIC-23.5-6,23.5-6,"Cement, lime, plaster and articles of concrete, cement and plaster",2.081254,1.945264
+SIC-23OTHER,23OTHER,"Glass, refractory, clay, other porcelain and ceramic, stone and abrasive products - 23.1-4/7-9",1.552006,1.446625
+SIC-24.1-3,24.1-3,Basic iron and steel,0.774278,0.698786
+SIC-24.4-5,24.4-5,Other basic metals and casting,0.031969,0.029982
+SIC-25.4,25.4,Weapons and ammunition,0.432405,0.368389
+SIC-25OTHER,25OTHER,"Fabricated metal products, excl. machinery and equipment and weapons & ammunition - 25.1-3/25.5-9",0.567727,0.485584
+SIC-26,26,"Computer, electronic and optical products",0.53641,0.453612
+SIC-27,27,Electrical equipment,0.842774,0.704496
+SIC-28,28,Machinery and equipment n.e.c.,0.511555,0.431797
+SIC-29,29,"Motor vehicles, trailers and semi-trailers",0.463458,0.393247
+SIC-30.1,30.1,Ships and boats,0.282493,0.240622
+SIC-30.3,30.3,Air and spacecraft and related machinery,0.389223,0.328899
+SIC-30OTHER,30OTHER,Other transport equipment - 30.2/4/9,0.360256,0.304715
+SIC-31,31,Furniture,0.49549,0.423047
+SIC-32,32,Other manufactured goods,0.67801,0.575737
+SIC-33.15,33.15,Repair and maintenance of ships and boats,0.133555,0.11671
+SIC-33.16,33.16,Repair and maintenance of aircraft and spacecraft,0.093352,0.08043
+SIC-33OTHER,33OTHER,Rest of repair; Installation - 33.11-14/17/19/20,0.265701,0.225211
+SIC-35.1,35.1,"Electricity, transmission and distribution",1.176757,1.0288
+SIC-35.2-3,35.2-3,Gas; distribution of gaseous fuels through mains; steam and air conditioning supply,1.138414,0.910086
+SIC-36,36,Natural water; water treatment and supply services,0.203288,0.180437
+SIC-37,37,Sewerage services; sewage sludge,0.353127,0.089197
+SIC-38,38,"Waste collection, treatment and disposal services; materials recovery services",1.306885,0.343996
+SIC-39,39,Remediation services and other waste management services,0.252942,0.175815
+SIC-41.2,41.2,Buildings and building construction works,0.231865,0.201562
+SIC-42.1-2,42.1-2,Constructions and construction works for civil engineering,0.26547,0.237757
+SIC-42.99,42.99,Specialised construction works,0.216944,0.190319
+SIC-45,45,Wholesale and retail trade and repair services of motor vehicles and motorcycles,0.267447,0.227287
+SIC-46,46,"Wholesale trade services, except of motor vehicles and motorcycles",4.516207,3.74611
+SIC-47,47,"Retail trade services, except of motor vehicles and motorcycles",0.271905,0.192284
+SIC-49.1-2,49.1-2,Rail transport services,0.4234,0.36897
+SIC-49.3-5,49.3-5,"Land transport services and transport services via pipelines, excluding rail transport",0.574881,0.503995
+SIC-50,50,Water transport services,0.969026,0.910872
+SIC-51,51,Air transport services,1.468811,1.370472
+SIC-52,52,Warehousing and support services for transportation,0.351246,0.306228
+SIC-53,53,Postal and courier services,0.22399,0.199156
+SIC-55,55,Accommodation services,0.289716,0.200354
+SIC-56,56,Food and beverage serving services,0.259553,0.185889
+SIC-58,58,Publishing services,0.094898,0.077022
+SIC-59,59,"Motion picture, video and TV programme production services, sound recording & music publishing",0.132818,0.105584
+SIC-60,60,Programming and broadcasting services,0.216442,0.172694
+SIC-61,61,Telecommunications services,0.094635,0.079615
+SIC-62,62,"Computer programming, consultancy and related services",0.099918,0.080879
+SIC-63,63,Information services,0.079877,0.065545
+SIC-64,64,"Financial services, except insurance and pension funding",0.08435,0.069918
+SIC-65.1-2,65.1-2,"Insurance, reinsurance and pension funding services, except compulsory social security",0.061415,0.049586
+SIC-65.3,65.3,Pension funding services,0.000925,0.000752
+SIC-66,66,Services auxiliary to financial services and insurance services,0.067445,0.056051
+SIC-68.12,68.12,"Real estate services, excluding on a fee or contract basis and imputed rent",0.176763,0.137912
+SIC-68.2IMP,68.2IMP,Owner-Occupiers' Housing Services,0.026822,0.023068
+SIC-68.3,68.3,Real estate services on a fee or contract basis,0.082827,0.071485
+SIC-69.1,69.1,Legal services,0.045924,0.036859
+SIC-69.2,69.2,"Accounting, bookkeeping and auditing services; tax consulting services",0.050227,0.040682
+SIC-70,70,Services of head offices; management consulting services,0.081188,0.067187
+SIC-71,71,Architectural and engineering services; technical testing and analysis services,0.161718,0.125246
+SIC-72,72,Scientific research and development services,0.151877,0.124361
+SIC-73,73,Advertising and market research services,0.105744,0.086004
+SIC-74,74,"Other professional, scientific and technical services",0.125908,0.097949
+SIC-75,75,Veterinary services,0.083239,0.068098
+SIC-77,77,Rental and leasing services,0.129773,0.10656
+SIC-78,78,Employment services,0.054772,0.045422
+SIC-79,79,"Travel agency, tour operator and other reservation services and related services",0.437811,0.399413
+SIC-80,80,Security and investigation services,0.08944,0.074216
+SIC-81,81,Services to buildings and landscape,0.138079,0.115528
+SIC-82,82,"Office administrative, office support and other business support services",0.155789,0.121357
+SIC-84,84,Public administration and defence services; compulsory social security services,0.226379,0.191065
+SIC-85,85,Education services,0.11973,0.097775
+SIC-86,86,Human health services,0.184525,0.152691
+SIC-87,87,Residential care services,0.126032,0.096356
+SIC-88,88,Social work services without accommodation,0.135644,0.106113
+SIC-90,90,"Creative, arts and entertainment services",0.296305,0.235976
+SIC-91,91,"Libraries, archives, museums and other cultural services",0.254822,0.208163
+SIC-92,92,Gambling and betting services,0.112635,0.087076
+SIC-93,93,Sports services and amusement and recreation services,0.232307,0.181445
+SIC-94,94,Services furnished by membership organisations,0.173722,0.144437
+SIC-95,95,Repair services of computers and personal and household goods,0.101322,0.078441
+SIC-96,96,Other personal services,0.082013,0.069062
+SIC-97,97,Services of households as employers of domestic personnel,0.034955,0.034567

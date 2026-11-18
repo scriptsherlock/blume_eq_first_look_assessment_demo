@@ -4,8 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .agents import extractor, modeller, questioner, researcher, sceptic
-from . import llm
+from . import llm, references
 from .llm import SearchUnavailable
+from .references import References
 from .evaluator import evaluate
 from .fetch import fetch
 from .schema import Claim, ModellerOut, Node, Objection, Verdict
@@ -22,6 +23,7 @@ class RunState:
     verdicts: dict[str, Verdict] = field(default_factory=dict)
     model: ModellerOut | None = None
     revision: int = 0
+    refs: References | None = None
 
 
 STATES: dict[str, RunState] = {}
@@ -44,6 +46,12 @@ def topo(model: ModellerOut) -> list[Node]:
     for n in model.tree.nodes:
         visit(n.id)
     return order
+
+
+def _emit_repair(log: RunLog, found: list[str]) -> None:
+    """Show on the canvas that the checks sent the model back, and why."""
+    log.emit("agent_started", "modeller", repair=found,
+             instruction="Checks rejected the model and sent it back: " + " | ".join(found))
 
 
 def _emit_model(log: RunLog, st: RunState) -> None:
@@ -105,7 +113,9 @@ def run(run_id: str, url: str) -> None:
             log.emit("verdict_set", "sceptic", verdict=verdict.model_dump())
 
         log.emit("agent_started", "modeller")
-        st.model = modeller.run(st.company, st.claims, st.verdicts, st.objections)
+        st.refs = references.load(live_fx=True)
+        st.model = modeller.run(st.company, st.claims, st.verdicts, st.objections, st.refs,
+                                on_repair=lambda found: _emit_repair(log, found))
         _emit_model(log, st)
         log.emit("run_finished", models={"main": llm.MODEL_FAST, "strong": llm.MODEL_STRONG,
                                          "fallback_calls": len(llm.FALLBACK_USED)})
@@ -121,7 +131,8 @@ def whatif(run_id: str, instruction: str) -> None:
         return
     try:
         log.emit("agent_started", "modeller", instruction=instruction)
-        st.model = modeller.patch(instruction, st.model)
+        st.model = modeller.patch(instruction, st.model, st.refs or references.load(), st.claims,
+                                  on_repair=lambda found: _emit_repair(log, found))
         st.revision += 1
         _emit_model(log, st)
         log.emit("run_finished")

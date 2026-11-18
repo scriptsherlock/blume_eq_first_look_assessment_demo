@@ -153,7 +153,7 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
           {serverLive === null
             ? "Checking for a local server…"
             : serverLive
-              ? "Local server connected. Live runs use Gemini with Google Search."
+              ? "Local server connected. Live runs use Gemini; web search is used only if your key has search quota."
               : "Live runs need the local server and a Gemini key (see README). Saved runs below work anywhere."}
         </div>
         {err && <div className="error">{err}</div>}

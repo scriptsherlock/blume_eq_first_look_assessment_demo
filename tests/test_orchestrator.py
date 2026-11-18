@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from server import llm, orchestrator, store
+from server import llm, orchestrator, references, store
 from server.agents import extractor, modeller, questioner, researcher, sceptic
 from server.schema import (
     Assumption, Claim, DriverTree, EvidenceItem, ExtractorOut, ModellerOut, Node, Objection,
@@ -35,7 +35,8 @@ def fake_json(prompt, schema, model=None, system=None):
         return ModellerOut(rationale="r", assumptions=[
             Assumption(id="a1", label="miles", low=3e6, base=4e6, high=4.5e6, unit="miles/yr", source_url=URL, claim_ids=["c1"]),
             Assumption(id="a2", label="cost per mile", low=0.5, base=1, high=2, unit="GBP/mile", judgement_call=True),
-            Assumption(id="a3", label="factor", low=0.0003, base=0.0004, high=0.0004, unit="t/mile", judgement_call=True),
+            Assumption(id="a3", label="van factor", low=0.00026915, base=0.00041138, high=0.00041138, unit="tCO2e/mile",
+                       source_note="[5_303_3102_9_1] van, diesel"),
         ], tree=DriverTree(root_value_id="v", root_impact_id="i", nodes=[
             Node(id="n1", label="miles", op="input", assumption_id="a1"),
             Node(id="n2", label="cost", op="input", assumption_id="a2"),
@@ -59,6 +60,8 @@ def stubbed(monkeypatch, tmp_path):
                         lambda *a, **k: ("report", [llm.Source(url="https://gov.uk/factors", title="gov.uk")]))
     monkeypatch.setattr(orchestrator, "fetch", lambda url: page)
     monkeypatch.setattr(store, "RUNS_DIR", tmp_path)
+    offline = references.load(live_fx=False)
+    monkeypatch.setattr(references, "load", lambda live_fx=True: offline)
 
 
 def test_full_run_emits_expected_events(stubbed):
@@ -81,7 +84,7 @@ def test_full_run_emits_expected_events(stubbed):
 
     ev = next(e for e in evs if e["type"] == "tree_evaluated")["payload"]["evaluation"]
     assert ev["value"]["base"] == pytest.approx(4e6)
-    assert ev["impact"]["base"] == pytest.approx(1600)
+    assert ev["impact"]["base"] == pytest.approx(4e6 * 0.00041138)
 
     qs = [e["payload"]["question"] for e in evs if e["type"] == "question_added"]
     assert [q["id"] for q in qs] == ["q1"]  # question targeting an unknown assumption dropped
@@ -117,7 +120,7 @@ def test_run_continues_when_search_is_unavailable(stubbed, monkeypatch):
 def test_modeller_rejects_trees_without_a_shared_driver():
     from server.evaluator import TreeError
     out = fake_json("", ModellerOut)
-    modeller.check(out)  # shares n1
+    modeller.check(out, references.load(live_fx=False), [])  # shares n1
     out.tree.nodes[4].children = ["n3", "n3"]  # impact no longer uses miles
     with pytest.raises(TreeError, match="share no input"):
-        modeller.check(out)
+        modeller.check(out, references.load(live_fx=False), [])
