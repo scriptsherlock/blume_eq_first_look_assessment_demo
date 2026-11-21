@@ -15,6 +15,11 @@ export const Ctx = createContext<CardCtx | null>(null);
 
 const OP_SYMBOL: Record<string, string> = { multiply: "×", add: "+", subtract: "−", divide: "÷" };
 
+export function shortDate(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 function host(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -67,6 +72,20 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
       <>
         <div className="eyebrow">Sceptic · severity {o.severity}/3</div>
         <div className="text small clamp">{o.text}</div>
+      </>
+    );
+  } else if (kind === "memory") {
+    const m = s.memory.find((x) => x.record.id === refId)!;
+    const r = m.record;
+    const cited = assumptions.some((a) => a.source_note?.includes(r.id));
+    cls += ` memory-${m.role}${cited ? " cited" : ""}`;
+    body = (
+      <>
+        <div className="eyebrow">
+          {m.role === "history" ? `Last look · ${shortDate(r.run_date)}` : `${r.company} · ${shortDate(r.run_date)}`}
+          {cited && <span className="pill pill-mem">used</span>}
+        </div>
+        <div className="text small clamp">{r.summary}</div>
       </>
     );
   } else if (kind === "assumption") {

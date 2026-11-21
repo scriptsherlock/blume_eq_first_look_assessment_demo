@@ -7,6 +7,7 @@ failures go back to the Modeller as repair instructions, up to MAX_REPAIRS.
 from __future__ import annotations
 
 import json
+import re
 
 from .. import guardrails, llm
 from ..evaluator import TreeError, validate
@@ -62,10 +63,45 @@ def _shared_driver(out: ModellerOut) -> None:
                 )
 
 
-def problems(out: ModellerOut, refs: References | None = None, claims: list[Claim] = ()) -> list[str]:
+MEM_ID = re.compile(r"mem-[0-9a-f]{8}")
+
+
+def carry_over_sources(out: ModellerOut, memory: dict) -> None:
+    """An assumption that cites an earlier look's *sourced* value keeps that source.
+
+    Without this, a model that forgets to copy the URL gets flagged as unsourced and
+    "repairs" it by turning a company claim into a guess. Runs before the checks.
+    """
+    for a in out.assumptions:
+        if a.source_url:
+            continue
+        for mid in MEM_ID.findall(a.source_note or ""):
+            r = memory.get(mid)
+            prev = (r.data.get("assumption") if r is not None and r.kind == "assumption" else None) or {}
+            if prev and not prev.get("judgement_call") and prev.get("source_url"):
+                a.source_url = prev["source_url"]
+                a.claim_ids = a.claim_ids or []
+                a.judgement_call = False
+                break
+
+
+def _memory_citations(out: ModellerOut, memory_ids) -> None:
+    for a in out.assumptions:
+        for mid in MEM_ID.findall(a.source_note or ""):
+            if mid not in memory_ids:
+                raise TreeError(
+                    f"assumption {a.id} cites {mid}, which is not one of the memories you were given. "
+                    "Cite only ids from the memory lists, or remove the citation."
+                )
+
+
+def problems(out: ModellerOut, refs: References | None = None, claims: list[Claim] = (),
+             memory=None) -> list[str]:
     """Every rule the model breaks, as repair instructions. Empty means the model is accepted."""
     if refs is not None:
         guardrails.fill_sources(out, refs)
+    if isinstance(memory, dict):
+        carry_over_sources(out, memory)
     try:
         validate(out.tree, out.assumptions)
     except TreeError as e:
@@ -74,6 +110,8 @@ def problems(out: ModellerOut, refs: References | None = None, claims: list[Clai
     checks = [_shared_driver]
     if refs is not None:
         checks += [lambda o: guardrails.check_currency(o, list(claims)), lambda o: guardrails.check_factors(o, refs)]
+    if memory is not None:
+        checks.append(lambda o: _memory_citations(o, memory))
     for c in checks:
         try:
             c(out)
@@ -82,16 +120,18 @@ def problems(out: ModellerOut, refs: References | None = None, claims: list[Clai
     return found
 
 
-def check(out: ModellerOut, refs: References | None = None, claims: list[Claim] = ()) -> None:
-    found = problems(out, refs, claims)
+def check(out: ModellerOut, refs: References | None = None, claims: list[Claim] = (),
+          memory=None) -> None:
+    found = problems(out, refs, claims, memory)
     if found:
         raise TreeError("; ".join(found))
 
 
-def _build(p: str, refs: References | None, claims: list[Claim], on_repair=None) -> ModellerOut:
+def _build(p: str, refs: References | None, claims: list[Claim], on_repair=None,
+           memory=None) -> ModellerOut:
     out = llm.generate_json(p, ModellerOut, model=llm.MODEL_STRONG)
     for _ in range(MAX_REPAIRS):
-        found = problems(out, refs, claims)
+        found = problems(out, refs, claims, memory)
         if not found:
             return out
         if on_repair:
@@ -102,22 +142,31 @@ def _build(p: str, refs: References | None, claims: list[Claim], on_repair=None)
             f"Previous model:\n{out.model_dump_json()}\nReturn a corrected model.",
             ModellerOut, model=llm.MODEL_STRONG,
         )
-    check(out, refs, claims)
+    check(out, refs, claims, memory)
     return out
 
 
 def run(company: str, claims: list[Claim], verdicts: dict[str, Verdict], objections: list[Objection],
-        refs: References, on_repair=None) -> ModellerOut:
+        refs: References, history: str = "", memory=None, on_repair=None) -> ModellerOut:
     p = prompt("modeller", company=company, claims=_claims_block(claims, verdicts, objections),
+               references=refs.prompt_block(), history=history or "No earlier looks in memory.")
+    return _build(p, refs, claims, on_repair, memory)
+
+
+def anchor(draft: ModellerOut, comparables: str, refs: References, claims: list[Claim],
+           memory=None, on_repair=None) -> ModellerOut:
+    """Second pass: revisit judgement calls in the light of how the firm sized similar things before."""
+    p = prompt("modeller_anchor", comparables=comparables, model=draft.model_dump_json(indent=1),
                references=refs.prompt_block())
-    return _build(p, refs, claims, on_repair)
+    return _build(p, refs, claims, on_repair, memory)
 
 
-def patch(instruction: str, current: ModellerOut, refs: References, claims: list[Claim], on_repair=None) -> ModellerOut:
+def patch(instruction: str, current: ModellerOut, refs: References, claims: list[Claim],
+          memory=None, on_repair=None) -> ModellerOut:
     p = prompt(
         "modeller_patch", instruction=instruction,
         assumptions=json.dumps([a.model_dump() for a in current.assumptions], indent=1),
         tree=current.tree.model_dump_json(indent=1),
         references=refs.prompt_block(),
     )
-    return _build(p, refs, claims, on_repair)
+    return _build(p, refs, claims, on_repair, memory)

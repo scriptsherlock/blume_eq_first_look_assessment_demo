@@ -13,6 +13,11 @@ Company: {company}
 Claims, verdicts and objections:
 {claims}
 
+What the firm already knows about this company (from memory). Each item has an id in square brackets:
+{history}
+
+Use it. If an earlier look sized a driver, start from that sizing rather than guessing again: reuse the number where nothing new contradicts it, or change it and say why in `source_note`. When you reuse or build on an item, put its id in `source_note` (for example "[mem-1a2b3c4d] same as last look"). A value that was sourced last time keeps its original `source_url`.
+
 Reference tables. These are the **only** emission factors and exchange rates you may use. Each row has an id in square brackets.
 {references}
 

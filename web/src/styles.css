@@ -135,3 +135,18 @@ a { color: var(--accent); }
 .edge-objection .react-flow__edge-path { stroke: #d9822b; }
 .edge-tree .react-flow__edge-path { stroke: var(--accent); }
 .note { background: #fbf0dc; color: #7a5212; padding: 8px 10px; border-radius: 6px; line-height: 1.4; }
+
+/* ---------- memory ---------- */
+.pill-mem { background: #ece6f7; color: #5b3fa0; }
+.card-memory { width: 280px; background: #f8f6fc; border-color: #ddd3f0; border-left: 4px solid #8a6fc9; }
+.card-memory.memory-comparable { border-left-color: #b8a6e0; background: #fbfafd; }
+.card-memory.cited { box-shadow: 0 0 0 1px #8a6fc9 inset; }
+.edge-memory .react-flow__edge-path { stroke: #8a6fc9; stroke-dasharray: 5 4; }
+.since { background: #f8f6fc; border: 1px solid #ddd3f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
+.since ul { margin: 6px 0 0; padding-left: 18px; }
+.since li { margin-bottom: 4px; line-height: 1.4; font-size: 13px; }
+.shift { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0 8px; }
+.shift > div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.shift > div:last-child { border-color: var(--accent); }
+.shift p { margin: 6px 0 0; line-height: 1.45; }
+@media (max-width: 640px) { .shift { grid-template-columns: 1fr; } }

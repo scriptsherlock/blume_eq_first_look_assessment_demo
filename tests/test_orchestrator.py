@@ -124,3 +124,71 @@ def test_modeller_rejects_trees_without_a_shared_driver():
     out.tree.nodes[4].children = ["n3", "n3"]  # impact no longer uses miles
     with pytest.raises(TreeError, match="share no input"):
         modeller.check(out, references.load(live_fx=False), [])
+
+
+def test_second_look_recalls_history_finds_comparables_and_reports_changes(stubbed, monkeypatch):
+    import json as _json
+    from server import memory as memory_mod
+
+    replays = ROOT / "web" / "public" / "replays"
+    seed = memory_mod.Memory()
+    for name in ("vyntelligence", "cameramatics"):
+        seed.add_run([_json.loads(l) for l in (replays / f"{name}.jsonl").read_text(encoding="utf-8").splitlines() if l])
+    seed.save()
+
+    calls = []
+    real_anchor = modeller.anchor
+    monkeypatch.setattr(modeller, "anchor", lambda *a, **k: calls.append(a[1]) or real_anchor(*a, **k))
+
+    orchestrator.run("abc1234570", URL)
+    evs = store.RunLog("abc1234570").events
+    assert evs[-1]["type"] == "run_finished", evs[-1]
+
+    recalled = [e["payload"] for e in evs if e["type"] == "memory_recalled"]
+    roles = {p["role"] for p in recalled}
+    assert "history" in roles
+    assert all(p["record"]["company"] == "Vyntelligence" for p in recalled if p["role"] == "history")
+    assert all(p["record"]["company"] != "Vyntelligence" for p in recalled if p["role"] == "comparable")
+
+    # "cost per mile [GBP/mile]" should find CameraMatics' per-mile savings, and trigger the anchoring pass
+    comps = [p for p in recalled if p["role"] == "comparable"]
+    assert any(p["record"]["company"] == "CameraMatics" and "per mile" in p["record"]["text"] for p in comps)
+    assert calls and "[mem-" in calls[0]
+
+    d = next(e["payload"]["diff"] for e in evs if e["type"] == "memory_diff")
+    assert d["claims"] and d["questions"]
+
+    after = memory_mod.Memory()
+    assert after.has_run("abc1234570")  # the next look will start from this one
+
+
+def test_first_look_has_no_diff_and_is_remembered(stubbed):
+    from server import memory as memory_mod
+
+    orchestrator.run("abc1234571", URL)
+    evs = store.RunLog("abc1234571").events
+    assert not [e for e in evs if e["type"] == "memory_diff"]
+    assert not [e for e in evs if e["type"] == "memory_recalled" and e["payload"]["role"] == "history"]
+    assert memory_mod.Memory().has_run("abc1234571")
+
+
+def test_modeller_rejects_made_up_memory_ids():
+    out = fake_json("", ModellerOut)
+    out.assumptions[1].source_note = "[mem-deadbeef] as before"
+    found = modeller.problems(out, references.load(live_fx=False), [], memory={"mem-00000000": None})
+    assert any("mem-deadbeef" in f for f in found)
+
+
+
+def test_citing_an_earlier_sourced_value_restores_its_source():
+    from server.memory import Record
+    out = fake_json("", ModellerOut)
+    a = out.assumptions[0]
+    a.source_url, a.claim_ids, a.judgement_call = None, [], False  # the model forgot the source
+    a.source_note = "[mem-11111111] same as last look"
+    prev = Record(id="mem-11111111", company="Vyntelligence", run_id="r0", run_date="2026-11-16", source_url=URL,
+                  kind="assumption", text="miles", summary="miles",
+                  data={"assumption": {**a.model_dump(), "source_url": URL, "judgement_call": False}})
+    found = modeller.problems(out, references.load(live_fx=False), [], memory={"mem-11111111": prev})
+    assert found == []
+    assert a.source_url == URL and not a.judgement_call

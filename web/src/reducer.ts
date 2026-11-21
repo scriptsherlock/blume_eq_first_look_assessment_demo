@@ -1,6 +1,6 @@
 // Folds the event log into view state. Replay and live mode share this.
 import type {
-  Assumption, Claim, DriverTree, Evaluation, Evidence, Objection, Question, RunEvent, TreeNode, Verdict,
+  Diff, MemoryItem, Assumption, Claim, DriverTree, Evaluation, Evidence, Objection, Question, RunEvent, TreeNode, Verdict,
 } from "./types";
 
 export interface AgentStep {
@@ -35,13 +35,15 @@ export interface State {
   finished: boolean;
   error: string | null;
   notes: string[];
+  memory: MemoryItem[];
+  diff?: Diff;
 }
 
 export const empty: State = {
   runId: "", url: "", mode: "", label: "", note: "", company: "",
   claims: [], dropped: [], evidence: [], objections: [], verdicts: {},
   revision: 0, assumptions: [], treeNodes: [], roots: {}, rationale: "", questions: [],
-  steps: [], activeAgent: null, finished: false, error: null, notes: [],
+  steps: [], activeAgent: null, finished: false, error: null, notes: [], memory: [],
 };
 
 function resetModelIfNewRevision(s: State, rev: number | undefined): State {
@@ -92,6 +94,10 @@ export function reduce(s: State, e: RunEvent): State {
       const t = resetModelIfNewRevision(s, p.revision);
       return { ...t, questions: [...t.questions, p.question] };
     }
+    case "memory_recalled":
+      return { ...s, memory: [...s.memory, p as MemoryItem] };
+    case "memory_diff":
+      return { ...s, diff: p.diff };
     case "run_finished":
       return { ...s, finished: true, activeAgent: null, steps: s.steps.map((x) => ({ ...x, done: true })) };
     case "error":

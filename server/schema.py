@@ -79,6 +79,7 @@ class Question(BaseModel):
     targets_assumption_id: str
     sensitivity_rank: int
     why_it_matters: str
+    asked_before: bool = Field(default=False, description="True if this was asked at an earlier look and is still open")
 
 
 # ---- agent output envelopes (what the LLM is asked to return) ----
@@ -149,6 +150,8 @@ EventType = Literal[
     "tree_node_added",
     "tree_evaluated",
     "question_added",
+    "memory_recalled",
+    "memory_diff",
     "agent_finished",
     "run_finished",
     "error",

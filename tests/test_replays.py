@@ -113,3 +113,14 @@ def test_final_model_passes_guardrails(path):
     )
     claims = [Claim.model_validate(p["claim"]) for p in of(evs, "claim_added")]
     assert modeller.problems(out, references.load(live_fx=False), claims) == []
+
+
+@pytest.mark.parametrize("path", REPLAYS, ids=lambda p: p.stem)
+def test_memory_citations_point_at_recalled_memories(path):
+    """Every [mem-...] an assumption cites was actually retrieved and shown in that run."""
+    import re
+    evs = events(path)
+    recalled = {p["record"]["id"] for p in of(evs, "memory_recalled")}
+    for a in last_revision(evs, "assumption_added", "assumption"):
+        for mid in re.findall(r"mem-[0-9a-f]{8}", a.get("source_note") or ""):
+            assert mid in recalled, f"{a['id']} cites {mid}, which was not recalled"

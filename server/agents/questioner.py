@@ -6,7 +6,8 @@ from ..schema import Assumption, Evaluation, Objection, Question, QuestionerOut
 from . import prompt
 
 
-def run(company: str, assumptions: list[Assumption], evaluation: Evaluation, objections: list[Objection]) -> list[Question]:
+def run(company: str, assumptions: list[Assumption], evaluation: Evaluation, objections: list[Objection],
+        asked_before: list = ()) -> list[Question]:
     by_id = {a.id: a for a in assumptions}
     ranked = "\n".join(
         f"{s.rank}. {s.assumption_id} {by_id[s.assumption_id].label} "
@@ -16,7 +17,8 @@ def run(company: str, assumptions: list[Assumption], evaluation: Evaluation, obj
     )
     obj = "\n".join(f"- (severity {o.severity}) {o.text}" for o in objections) or "- none"
     ranks = {s.assumption_id: s.rank for s in evaluation.sensitivity}
-    out = llm.generate_json(prompt("questioner", company=company, ranked=ranked, objections=obj),
+    asked = "\n".join(f"- {r.text}" for r in asked_before) or "- none (first look)"
+    out = llm.generate_json(prompt("questioner", company=company, ranked=ranked, objections=obj, asked=asked),
                             QuestionerOut, model=llm.MODEL_FAST)
     qs, seen = [], set()
     for q in out.questions:

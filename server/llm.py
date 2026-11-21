@@ -171,3 +171,38 @@ def generate_grounded(prompt: str, model: str | None = None, system: str | None 
                 seen.add(web.uri)
                 sources.append(Source(url=web.uri, title=web.title or web.domain or ""))
     return resp.text or "", sources
+
+
+# ---------------------------------------------------------------- embeddings
+
+EMBED_MODEL = os.getenv("EMBED_MODEL", "gemini-embedding-001")
+EMBED_DIM = 768
+
+
+def embed(texts: list[str]) -> list[list[float]]:
+    """Embed texts with Gemini. Vectors are L2-normalised, so a dot product is cosine similarity."""
+    from google.genai import types
+
+    out: list[list[float]] = []
+    for i in range(0, len(texts), 50):  # batch to stay inside request limits
+        resp = _call_embed(
+            model=EMBED_MODEL,
+            contents=texts[i : i + 50],
+            config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY", output_dimensionality=EMBED_DIM),
+        )
+        for e in resp.embeddings:
+            v = list(e.values)
+            norm = sum(x * x for x in v) ** 0.5 or 1.0
+            out.append([x / norm for x in v])
+    return out
+
+
+def _call_embed(**kw):
+    for attempt in range(RATE_LIMIT_RETRIES + 1):
+        time.sleep(CALL_DELAY_S)
+        try:
+            return client().models.embed_content(**kw)
+        except Exception as e:
+            if not _is_transient(e) or attempt == RATE_LIMIT_RETRIES:
+                raise
+            time.sleep(15 * (attempt + 1))

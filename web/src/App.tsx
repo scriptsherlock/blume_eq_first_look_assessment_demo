@@ -3,12 +3,12 @@ import { Background, BackgroundVariant, Controls, ReactFlow, ReactFlowProvider, 
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
 
-import { Card, Ctx } from "./Card";
+import { Card, Ctx, shortDate } from "./Card";
 import { buildGraph } from "./layout";
 import { fold, type State } from "./reducer";
 import { evaluate } from "./evaluator";
 import { fmt, fmtRange, STATUS_CLASS } from "./format";
-import type { Assumption, RunEvent } from "./types";
+import type { Assumption, Diff, RunEvent } from "./types";
 
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
 const nodeTypes = { card: Card };
@@ -17,6 +17,7 @@ interface ReplayEntry {
   file: string;
   name: string;
   blurb: string;
+  look?: string;
 }
 
 type Override = Pick<Assumption, "low" | "base" | "high">;
@@ -133,6 +134,17 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
           the founder.
         </p>
 
+        <div className="shift">
+          <div>
+            <div className="eyebrow">Today</div>
+            <p>Every first look starts from a blank spreadsheet. What the team learned last time sits in someone's notes, and every unknown is a fresh personal guess.</p>
+          </div>
+          <div>
+            <div className="eyebrow">With Evidence Map</div>
+            <p>Every look starts from the last one. Claims are tested and modelled in minutes, guesses are anchored to how the firm sized similar companies before, and the analyst's job becomes choosing which uncertainty to resolve next.</p>
+          </div>
+        </div>
+
         <form
           className="url-form"
           onSubmit={(e) => {
@@ -162,7 +174,7 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
         <div className="replays">
           {replays.map((r) => (
             <button key={r.file} className="replay-card" onClick={() => onReplay(r.file)}>
-              <div className="title">{r.name}</div>
+              <div className="title">{r.name}{r.look && <span className="pill">{r.look}</span>}</div>
               <div className="muted small">{r.blurb}</div>
             </button>
           ))}
@@ -295,6 +307,7 @@ const AGENT_LABEL: Record<string, string> = {
   modeller: "Modeller",
   evaluator: "Evaluator",
   questioner: "Questioner",
+  memory: "Memory",
 };
 
 function Rail({ s, onHome }: { s: State; onHome: () => void }) {
@@ -394,6 +407,38 @@ function BottomBar({ s, ev, edited, live, replay, onWhatIf }: {
   );
 }
 
+function SinceLastLook({ diff }: { diff: Diff }) {
+  const narrowed = diff.assumptions.filter((a) => a.change === "narrowed" || a.became_sourced);
+  const widened = diff.assumptions.filter((a) => a.change === "widened" || a.change === "base moved" || a.change === "redefined");
+  const fresh = diff.assumptions.filter((a) => a.change === "new");
+  const verdicts = diff.claims.filter((c) => c.change === "verdict changed");
+  const newClaims = diff.claims.filter((c) => c.change === "new");
+  const open = diff.questions.filter((q) => q.status === "still open");
+  const rng = (r?: { low: number; high: number; unit: string }) => (r ? `${fmt(r.low, r.unit)}–${fmt(r.high, r.unit)}` : "");
+  return (
+    <section className="since">
+      <div className="eyebrow">Since the last look · {shortDate(diff.previous_date)}</div>
+      <ul>
+        {narrowed.map((a) => (
+          <li key={a.assumption_id}><b>Narrowed:</b> {a.label} {rng(a.before)} → {rng(a.now)}{a.became_sourced ? " (now sourced)" : ""}</li>
+        ))}
+        {widened.map((a) => (
+          <li key={a.assumption_id}><b>{a.change === "widened" ? "Widened" : "Changed"}:</b> {a.label} {rng(a.before)} → {rng(a.now)}</li>
+        ))}
+        {verdicts.map((c) => (
+          <li key={c.text}><b>Verdict:</b> {c.text} — {c.before} → {c.now}</li>
+        ))}
+        {newClaims.length > 0 && <li><b>New claims:</b> {newClaims.length} not seen before</li>}
+        {fresh.length > 0 && <li><b>New assumptions:</b> {fresh.map((a) => a.label).join("; ")}</li>}
+        {open.length > 0 && <li><b>Still open:</b> {open.length} question{open.length > 1 ? "s" : ""} from last time asked again</li>}
+        {!narrowed.length && !widened.length && !verdicts.length && !newClaims.length && !fresh.length && (
+          <li>No material change from the last look.</li>
+        )}
+      </ul>
+    </section>
+  );
+}
+
 function Questions({ s, assumptions, onClose }: { s: State; assumptions: Assumption[]; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const label = (id: string) => assumptions.find((a) => a.id === id)?.label ?? id;
@@ -403,6 +448,7 @@ function Questions({ s, assumptions, onClose }: { s: State; assumptions: Assumpt
     `\n\nAny data you can share in advance would be very welcome.\n\nBest regards`;
   return (
     <aside className="questions">
+      {s.diff && <SinceLastLook diff={s.diff} />}
       <div className="q-head">
         <div>
           <div className="eyebrow">Next founder call</div>
@@ -413,7 +459,9 @@ function Questions({ s, assumptions, onClose }: { s: State; assumptions: Assumpt
       <ol>
         {s.questions.map((q) => (
           <li key={q.id}>
-            <div>{q.text}</div>
+            <div>
+              {q.asked_before && <span className="pill pill-warn">still open from last look</span>} {q.text}
+            </div>
             <div className="muted small">
               Targets “{label(q.targets_assumption_id)}” (sensitivity #{q.sensitivity_rank}). {q.why_it_matters}
             </div>
@@ -512,6 +560,32 @@ function Drawer({ id, s, assumptions, live, override, reset, onWhatIf, onClose }
             <p>{s.rationale}</p>
           </>
         )}
+      </>
+    );
+  } else if (kind === "memory") {
+    const m = s.memory.find((x) => x.record.id === ref)!;
+    const r = m.record;
+    const usedBy = assumptions.filter((a) => a.source_note?.includes(r.id));
+    const a = r.data.assumption;
+    const v = r.data.verdict;
+    body = (
+      <>
+        <div className="eyebrow">
+          {m.role === "history" ? "Memory · earlier look at this company" : `Memory · comparable from ${r.company}`}
+        </div>
+        <h3>{r.kind === "assumption" && a ? a.label : r.text}</h3>
+        {a && <div className="mono small">{fmt(a.low, a.unit)} · <b>{fmt(a.base, a.unit)}</b> · {fmt(a.high, a.unit)}</div>}
+        {a?.source_note && <p className="small">{a.source_note}</p>}
+        {v?.status && <div className={`verdict pill-${STATUS_CLASS[v.status]}`}><b>{v.status}</b> — {v.reason}</div>}
+        <p className="muted small">
+          From the {r.company} assessment on {shortDate(r.run_date)}
+          {m.score != null && <> · similarity {m.score.toFixed(2)}{m.for_label ? ` to “${m.for_label}”` : ""}</>}
+        </p>
+        <a href={r.source_url} target="_blank" rel="noreferrer" className="small">Page assessed then ↗</a>
+        <h4>Used by</h4>
+        {usedBy.length ? usedBy.map((u) => (
+          <div key={u.id} className="item"><b>{u.label}</b><div className="muted small">{u.source_note}</div></div>
+        )) : <div className="muted small">Shown to the Modeller; not cited in the final model.</div>}
       </>
     );
   } else if (kind === "source") {

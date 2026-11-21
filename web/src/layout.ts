@@ -7,14 +7,14 @@ import type { State } from "./reducer";
 export const COL_W = 330;
 const GAP = 24;
 
-export type CardKind = "source" | "claim" | "evidence" | "objection" | "assumption" | "op" | "output";
+export type CardKind = "source" | "claim" | "evidence" | "objection" | "memory" | "assumption" | "op" | "output";
 export interface CardData extends Record<string, unknown> {
   kind: CardKind;
   refId: string;
 }
 
 function h(kind: CardKind): number {
-  return { source: 120, claim: 128, evidence: 100, objection: 100, assumption: 104, op: 70, output: 120 }[kind];
+  return { source: 120, claim: 128, evidence: 100, objection: 100, memory: 96, assumption: 104, op: 70, output: 120 }[kind];
 }
 
 export function buildGraph(s: State, assumptions: Assumption[], ev: Evaluation | undefined, selected: string | null) {
@@ -54,13 +54,36 @@ export function buildGraph(s: State, assumptions: Assumption[], ev: Evaluation |
     });
   });
 
+  // memory: earlier looks at this company, then comparables from other companies
+  const memCol = s.memory.length > 0 ? 1 : 0;
+  y = 0;
+  const memIds = new Set<string>();
+  const linkedClaims = new Set((s.diff?.claims ?? []).filter((c) => c.claim_id && c.memory_id).map((c) => c.memory_id));
+  [...s.memory.filter((m) => m.role === "history" && (m.record.kind === "assumption" || linkedClaims.has(m.record.id))),
+   ...s.memory.filter((m) => m.role === "comparable")].forEach((m) => {
+    memIds.add(m.record.id);
+    add(`memory:${m.record.id}`, "memory", m.record.id, COL_W * 3, y);
+    y += h("memory") + GAP;
+  });
+  // a repeated claim links back to how it was judged last time
+  s.diff?.claims.forEach((c) => {
+    if (c.claim_id && c.memory_id && memIds.has(c.memory_id))
+      edges.push({ id: `e-mem-${c.memory_id}-${c.claim_id}`, source: `claim:${c.claim_id}`, target: `memory:${c.memory_id}`,
+                   className: "edge-memory" });
+  });
+  const AX = COL_W * (3 + memCol);
+
   // assumptions
   const rank: Record<string, number> = {};
   ev?.sensitivity.forEach((sw) => (rank[sw.assumption_id] = sw.rank));
   const nA = Math.max(assumptions.length, 1);
   y = 0;
   assumptions.forEach((a) => {
-    add(`assumption:${a.id}`, "assumption", a.id, COL_W * 3, y);
+    add(`assumption:${a.id}`, "assumption", a.id, AX, y);
+    (a.source_note?.match(/mem-[0-9a-f]{8}/g) ?? []).forEach((mid) => {
+      if (memIds.has(mid))
+        edges.push({ id: `e-${mid}-${a.id}`, source: `memory:${mid}`, target: `assumption:${a.id}`, className: "edge-memory" });
+    });
     a.claim_ids.forEach((cid) => {
       if (claimY[cid] !== undefined)
         edges.push({ id: `e-${cid}-${a.id}`, source: `claim:${cid}`, target: `assumption:${a.id}`, className: "edge-claim" });
@@ -92,7 +115,7 @@ export function buildGraph(s: State, assumptions: Assumption[], ev: Evaluation |
     let yy = Math.max(0, (assumptions.length * (h("assumption") + GAP)) / 2 - total / 2);
     list.forEach((n) => {
       const kind = isRoot(n.id) ? "output" : "op";
-      add(`tree:${n.id}`, kind, n.id, COL_W * 4 + (c - 1) * (COL_W * 0.78), yy);
+      add(`tree:${n.id}`, kind, n.id, AX + COL_W + (c - 1) * (COL_W * 0.78), yy);
       yy += h(kind) + GAP * 3;
     });
   });
