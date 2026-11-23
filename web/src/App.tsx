@@ -4,7 +4,7 @@ import "@xyflow/react/dist/style.css";
 import "./styles.css";
 
 import { Card, Ctx, shortDate } from "./Card";
-import { Summary } from "./Summary";
+import { Outputs, Summary } from "./Summary";
 import { Working } from "./Working";
 import { buildGraph } from "./layout";
 import { fold, type State } from "./reducer";
@@ -272,6 +272,10 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
           <>
             <Rail s={s} />
             <div className="canvas">
+              <div className="map-results">
+                <Outputs s={s} assumptions={assumptions} ev={ev} variant="strip" edited={edited.size > 0} />
+              </div>
+              <div className="flow-wrap">
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -287,6 +291,7 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
                 <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
               </ReactFlow>
               <Columns />
+              </div>
             </div>
             {selected && (
               <Drawer
@@ -302,7 +307,7 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
             )}
           </>
         )}
-        <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={replay} onWhatIf={onWhatIf} compact={view !== "map"} />
+        <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={replay} onWhatIf={onWhatIf} compact />
       </div>
     </Ctx.Provider>
   );

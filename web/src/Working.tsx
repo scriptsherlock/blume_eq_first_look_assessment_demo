@@ -4,6 +4,7 @@ import type { State } from "./reducer";
 import type { Assumption, Evaluation, TreeNode } from "./types";
 import { fmt, STATUS_CLASS } from "./format";
 import { shortDate } from "./Card";
+import { Outputs } from "./Summary";
 
 type Override = Pick<Assumption, "low" | "base" | "high">;
 
@@ -34,6 +35,7 @@ export function Working({ s, assumptions, ev, edited, override, reset }: {
 }) {
   return (
     <main className="working">
+      <Outputs s={s} assumptions={assumptions} ev={ev} edited={edited.size > 0} />
       <ClaimsTested s={s} />
       <Model s={s} assumptions={assumptions} ev={ev} edited={edited} override={override} reset={reset} />
       <MemoryUsed s={s} />

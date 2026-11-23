@@ -227,7 +227,9 @@ input:focus { outline: none; border-color: var(--teal); }
 .step.active .step-detail { color: var(--sage); }
 .note { background: #f7efd9; color: var(--warn); padding: 8px 10px; border-radius: var(--r-sm); font: 12px/1.4 var(--sans); }
 
-.canvas { grid-column: 2; grid-row: 2; position: relative; min-width: 0; background: var(--paper); }
+.canvas { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; background: var(--paper); display: flex; flex-direction: column; }
+.map-results { padding: 14px 16px 0; }
+.flow-wrap { position: relative; flex: 1; min-height: 0; }
 .columns-legend { position: absolute; z-index: 4; bottom: 10px; left: 60px; display: flex; gap: 16px; font: 12px/1 var(--sans); color: var(--muted); }
 .columns-legend span:not(:last-child)::after { content: " ›"; }
 
@@ -403,3 +405,10 @@ button.num-row:hover, .num-item.open > .num-row { background: #efeddf; }
   .num-row { grid-template-columns: 1fr 1fr; }
   .equations li { grid-template-columns: 1fr; gap: 4px; }
 }
+
+/* results panel: slimmer strip above the map */
+.outputs.strip { padding: 14px 22px; gap: 8px 36px; border-radius: var(--r-md); }
+.outputs.strip .figure-value { font-size: 34px; margin: 2px 0 8px; }
+.outputs.strip .figure-value .per { font-size: 17px; }
+.outputs.strip .outputs-why { font-size: 15px; padding-top: 8px; }
+.outputs-edited { grid-column: 1 / -1; font: 500 13px/1.4 var(--sans); color: var(--forest); background: var(--mark); border-radius: var(--r-sm); padding: 6px 10px; width: fit-content; }

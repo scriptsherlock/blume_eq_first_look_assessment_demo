@@ -40,10 +40,16 @@ export function Summary({ s, assumptions, ev, onOpen }: {
 
 // ---------------------------------------------------------------- outputs (reversed panel)
 
-function Outputs({ s, assumptions, ev }: { s: State; assumptions: Assumption[]; ev?: Evaluation }) {
+export function Outputs({ s, assumptions, ev, variant = "full", edited = false }: {
+  s: State;
+  assumptions: Assumption[];
+  ev?: Evaluation;
+  variant?: "full" | "strip";
+  edited?: boolean;
+}) {
   if (!ev) {
     return (
-      <section className="outputs pending">
+      <section className={`outputs pending ${variant}`}>
         <p>{s.error ? "The run stopped before the model was built." : "Reading the page and testing the claims…"}</p>
       </section>
     );
@@ -51,9 +57,10 @@ function Outputs({ s, assumptions, ev }: { s: State; assumptions: Assumption[]; 
   const label = (id: string) => assumptions.find((a) => a.id === id)?.label ?? id;
   const drivers = ev.sensitivity.slice(0, 2).map((x) => label(x.assumption_id));
   return (
-    <section className="outputs">
+    <section className={`outputs ${variant}`}>
       <Figure title="Customer value" r={ev.value} />
       <Figure title="Carbon avoided" r={ev.impact} />
+      {edited && <p className="outputs-edited">Showing your edited numbers. Reset them in the table below.</p>}
       {drivers.length > 0 && (
         <p className="outputs-why">
           Most of the spread comes from <b>{drivers[0]}</b>
