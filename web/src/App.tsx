@@ -165,7 +165,7 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
           {serverLive === null
             ? "Checking for a local server…"
             : serverLive
-              ? "Local server connected. Live runs use Gemini; web search is used only if your key has search quota."
+              ? "Local server connected. Live runs use Gemini and a keyless web search; a run takes about 10 minutes."
               : "Live runs need the local server and a Gemini key (see README). Saved runs below work anywhere."}
         </div>
         {err && <div className="error">{err}</div>}
@@ -513,6 +513,7 @@ function Drawer({ id, s, assumptions, live, override, reset, onWhatIf, onClose }
           <div key={e.id} className="item">
             <span className={`pill stance-${e.stance}`}>{e.stance}</span> {e.summary}{" "}
             <a href={e.url} target="_blank" rel="noreferrer">{e.publisher || "link"} ↗</a>
+            {e.quote && <blockquote className="small">“{e.quote}”</blockquote>}
           </div>
         ))}
         {!s.evidence.some((e) => e.claim_id === ref) && <div className="muted small">No independent evidence found.</div>}
@@ -531,6 +532,7 @@ function Drawer({ id, s, assumptions, live, override, reset, onWhatIf, onClose }
       <>
         <div className="eyebrow">Evidence · {e.stance}</div>
         <p>{e.summary}</p>
+        {e.quote && <blockquote>“{e.quote}”</blockquote>}
         <a href={e.url} target="_blank" rel="noreferrer">{e.publisher || e.url} ↗</a>
       </>
     );

@@ -29,6 +29,7 @@ class Evidence(BaseModel):
     summary: str
     url: str
     publisher: str = ""
+    quote: str = ""  # exact sentence from the source page, checked by code
 
 
 class Objection(BaseModel):
@@ -93,6 +94,11 @@ class EvidenceItem(BaseModel):
     stance: Stance
     summary: str
     source_index: int = Field(description="Index into the numbered source list provided")
+    quote: str = Field(default="", description="An exact sentence copied from that source that backs the summary")
+
+
+class SearchPlan(BaseModel):
+    queries: list[str] = Field(description="Up to 2 web search queries")
 
 
 class ResearcherOut(BaseModel):

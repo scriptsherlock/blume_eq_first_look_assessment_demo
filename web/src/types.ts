@@ -22,6 +22,7 @@ export interface Evidence {
   summary: string;
   url: string;
   publisher: string;
+  quote?: string;
 }
 
 export interface Objection {

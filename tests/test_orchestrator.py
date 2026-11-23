@@ -7,12 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from server import llm, orchestrator, references, store
+from server import llm, orchestrator, references, search, store
 from server.agents import extractor, modeller, questioner, researcher, sceptic
 from server.schema import (
     Assumption, Claim, DriverTree, EvidenceItem, ExtractorOut, ModellerOut, Node, Objection,
-    Question, QuestionerOut, ResearcherOut, ScepticOut, Verdict,
+    Question, QuestionerOut, ResearcherOut, ScepticOut, SearchPlan, Verdict,
 )
+
+FACTOR_PAGE = "UK conversion factors. An average diesel van emits 0.41 kg CO2e per mile driven. " * 10
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = "https://example.com/vyntelligence"
@@ -24,9 +26,15 @@ def fake_json(prompt, schema, model=None, system=None):
             Claim(id="c1", kind="impact", text="4M miles", quote="saves approximately 4 million carbon miles annually"),
             Claim(id="c2", kind="value", text="invented", quote="this sentence is not on the page at all"),
         ])
+    if schema is SearchPlan:
+        return SearchPlan(queries=["van emissions per mile UK"])
     if schema is ResearcherOut:
-        return ResearcherOut(items=[EvidenceItem(stance="context", summary="factor table", source_index=0),
-                                    EvidenceItem(stance="supports", summary="hallucinated", source_index=7)])
+        return ResearcherOut(items=[
+            EvidenceItem(stance="context", summary="factor table", source_index=0,
+                         quote="An average diesel van emits 0.41 kg CO2e per mile driven."),
+            EvidenceItem(stance="supports", summary="quote not on page", source_index=0, quote="Vans emit nothing at all."),
+            EvidenceItem(stance="supports", summary="hallucinated page", source_index=7, quote="x" * 20),
+        ])
     if schema is ScepticOut:
         return ScepticOut(
             objections=[Objection(id="o1", claim_id="?", text="undefined unit", severity=3, what_would_resolve_it="data")],
@@ -56,8 +64,12 @@ def fake_json(prompt, schema, model=None, system=None):
 def stubbed(monkeypatch, tmp_path):
     page = ("Vyntelligence", (ROOT / "sources" / "vyntelligence.txt").read_text(encoding="utf-8"))
     monkeypatch.setattr(llm, "generate_json", fake_json)
-    monkeypatch.setattr(llm, "generate_grounded",
-                        lambda *a, **k: ("report", [llm.Source(url="https://gov.uk/factors", title="gov.uk")]))
+    monkeypatch.setenv("SEARCH_PROVIDER", "web")
+    monkeypatch.setattr(search, "web_search", lambda q, k=5: [
+        search.Hit(url="https://www.vyntelligence.com/blog", title="Our own blog", snippet=""),  # not independent
+        search.Hit(url="https://gov.uk/factors", title="UK factors", snippet=""),
+    ])
+    monkeypatch.setattr(search, "read_page", lambda url: FACTOR_PAGE)
     monkeypatch.setattr(orchestrator, "fetch", lambda url: page)
     monkeypatch.setattr(store, "RUNS_DIR", tmp_path)
     offline = references.load(live_fx=False)
@@ -76,7 +88,8 @@ def test_full_run_emits_expected_events(stubbed):
     assert len(dropped) == 1
 
     evidence = [e["payload"]["evidence"] for e in evs if e["type"] == "evidence_added"]
-    assert len(evidence) == 1  # source_index 7 was not returned by grounding, so it is dropped
+    assert len(evidence) == 1  # own-site page excluded; quote not on page and made-up page index both dropped
+    assert evidence[0]["quote"].startswith("An average diesel van")
     assert evidence[0]["url"] == "https://gov.uk/factors"
 
     verdict = next(e for e in evs if e["type"] == "verdict_set")["payload"]["verdict"]
@@ -106,14 +119,14 @@ def test_whatif_on_unknown_run_reports_error(stubbed):
 
 def test_run_continues_when_search_is_unavailable(stubbed, monkeypatch):
     def no_search(*a, **k):
-        raise llm.SearchUnavailable("no quota")
-    monkeypatch.setattr(llm, "generate_grounded", no_search)
+        raise RuntimeError("rate limited")
+    monkeypatch.setattr(search, "web_search", no_search)
     orchestrator.run("abc1234569", URL)
     evs = store.RunLog("abc1234569").events
     assert evs[-1]["type"] == "run_finished"
     assert not [e for e in evs if e["type"] == "evidence_added"]
     notes = [e["payload"].get("note") for e in evs if e["type"] == "agent_finished" and e["agent"] == "researcher"]
-    assert notes and "unavailable" in notes[0]
+    assert notes and "unavailable" in notes[0]  # given up after two failures, not one
     assert [e for e in evs if e["type"] == "verdict_set"]
 
 

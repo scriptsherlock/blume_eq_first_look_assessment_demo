@@ -159,17 +159,22 @@ def run(run_id: str, url: str) -> None:
             note = f"No earlier looks at {st.company} in memory. Starting fresh."
         log.emit("agent_finished", "memory", note=note)
 
-        search_ok = True
+        search_failures = 0  # stop searching after two failures in a row; one may be a blip
         for c in st.claims:
             evidence = []
-            if search_ok:
+            if search_failures < 2:
                 log.emit("agent_started", "researcher", claim_id=c.id)
                 try:
                     evidence = researcher.run(st.company, c)
+                    search_failures = 0
                 except SearchUnavailable as e:
-                    search_ok = False
-                    log.emit("agent_finished", "researcher", search_unavailable=True,
-                             note=f"Web search unavailable ({e}). Claims are judged without independent evidence.")
+                    search_failures += 1
+                    if search_failures == 2 or not llm.SEARCH_ENABLED:
+                        search_failures = 2
+                        note = f"Web search unavailable ({e}). Remaining claims are judged without independent evidence."
+                    else:
+                        note = f"Web search unavailable for this claim ({e}); trying again on the next one."
+                    log.emit("agent_finished", "researcher", search_unavailable=True, note=note)
                 for e in evidence:
                     log.emit("evidence_added", "researcher", evidence=e.model_dump())
 
