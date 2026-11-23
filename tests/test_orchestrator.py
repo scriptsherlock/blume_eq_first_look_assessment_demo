@@ -205,3 +205,19 @@ def test_citing_an_earlier_sourced_value_restores_its_source():
     found = modeller.problems(out, references.load(live_fx=False), [], memory={"mem-11111111": prev})
     assert found == []
     assert a.source_url == URL and not a.judgement_call
+
+
+def test_one_busy_call_does_not_end_the_run(stubbed, monkeypatch):
+    calls = {"n": 0}
+    real = sceptic.run
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        raise RuntimeError("503 UNAVAILABLE high demand")
+    monkeypatch.setattr(sceptic, "run", flaky)
+    orchestrator.run("abc1234572", URL)
+    evs = store.RunLog("abc1234572").events
+    assert evs[-1]["type"] == "run_finished"  # model and questions still produced
+    notes = [e["payload"].get("note", "") for e in evs if e["type"] == "agent_finished"]
+    assert any("Couldn't argue against" in n and "busy" in n for n in notes)
+    assert [e for e in evs if e["type"] == "question_added"]

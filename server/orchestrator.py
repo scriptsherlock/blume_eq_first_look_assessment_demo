@@ -54,6 +54,10 @@ def topo(model: ModellerOut) -> list[Node]:
     return order
 
 
+def _busy(e: Exception) -> str:
+    return "Gemini is busy" if llm._is_transient(e) else f"{type(e).__name__}"
+
+
 def _emit_repair(log: RunLog, found: list[str]) -> None:
     """Show on the canvas that the checks sent the model back, and why."""
     log.emit("agent_started", "modeller", repair=found,
@@ -102,7 +106,12 @@ def _emit_model(log: RunLog, st: RunState) -> None:
 
     log.emit("agent_started", "questioner")
     asked = [r for r in st.history if r.kind == "question"]
-    for q in questioner.run(st.company, m.assumptions, ev, st.objections, asked):
+    try:
+        qs = questioner.run(st.company, m.assumptions, ev, st.objections, asked)
+    except Exception as e:
+        log.emit("agent_finished", "questioner", note=f"Couldn't write the founder questions ({_busy(e)}). Run it again later.")
+        return
+    for q in qs:
         log.emit("question_added", "questioner", revision=st.revision, question=q.model_dump())
     log.emit("agent_finished", "questioner")
 
@@ -175,11 +184,19 @@ def run(run_id: str, url: str) -> None:
                     else:
                         note = f"Web search unavailable for this claim ({e}); trying again on the next one."
                     log.emit("agent_finished", "researcher", search_unavailable=True, note=note)
+                except Exception as e:  # model overloaded mid-search: skip this claim's evidence
+                    log.emit("agent_finished", "researcher",
+                             note=f"Couldn't search for evidence on one claim ({_busy(e)}); it is judged on the page alone.")
                 for e in evidence:
                     log.emit("evidence_added", "researcher", evidence=e.model_dump())
 
             log.emit("agent_started", "sceptic", claim_id=c.id)
-            objs, verdict = sceptic.run(st.company, c, evidence)
+            try:
+                objs, verdict = sceptic.run(st.company, c, evidence)
+            except Exception as e:
+                log.emit("agent_finished", "sceptic",
+                         note=f"Couldn't argue against one claim ({_busy(e)}); it has no verdict.")
+                continue
             st.objections += objs
             st.verdicts[c.id] = verdict
             for o in objs:

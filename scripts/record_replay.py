@@ -32,6 +32,12 @@ def main(url: str, name: str) -> None:
     if last["type"] == "error":
         print("run failed:", last["payload"].get("message"))
         sys.exit(1)
+    claims = {e["payload"]["claim"]["id"] for e in events if e["type"] == "claim_added"}
+    judged = {e["payload"]["verdict"]["claim_id"] for e in events if e["type"] == "verdict_set"}
+    questions = [e for e in events if e["type"] == "question_added"]
+    if claims - judged or not questions:
+        print(f"run incomplete (verdicts {len(judged)}/{len(claims)}, questions {len(questions)}); not saved as a replay")
+        sys.exit(1)
     REPLAYS.mkdir(parents=True, exist_ok=True)
     shutil.copy(src, REPLAYS / f"{name}.jsonl")
     print(f"saved {REPLAYS / f'{name}.jsonl'} ({len(events)} events)")
