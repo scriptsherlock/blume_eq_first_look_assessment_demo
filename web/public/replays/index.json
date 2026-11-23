@@ -2,25 +2,25 @@
   {
     "file": "vyntelligence.jsonl",
     "name": "Vyntelligence",
-    "blurb": "Field-service video AI. One driver, attributable miles avoided, sets both the customer saving and the emissions avoided.",
+    "blurb": "Field-service video AI. Avoided site visits drive both the saving and the carbon.",
     "look": "first look"
   },
   {
     "file": "vyntelligence-look2.jsonl",
     "name": "Vyntelligence",
     "look": "second look",
-    "blurb": "A later page about the same company. Starts from the first look in memory, checks guesses against other companies, and shows what changed and what is still open."
+    "blurb": "A later page, read against the first look. Four questions still open."
   },
   {
     "file": "cameramatics.jsonl",
     "name": "CameraMatics",
-    "blurb": "Fleet video telematics. No company-specific figures on the page, so the model runs on judgement calls and the questions ask for fleet data.",
+    "blurb": "Fleet video telematics. Few hard numbers, so the questions ask for fleet data.",
     "look": "first look"
   },
   {
     "file": "sparetech.jsonl",
     "name": "SPARETECH",
-    "blurb": "Spare-parts AI for manufacturers. A dollar benchmark converted at the ECB rate, with a DEFRA spend-based emission factor.",
+    "blurb": "Spare-parts AI. A dollar figure converted at the ECB rate.",
     "look": "first look"
   }
 ]

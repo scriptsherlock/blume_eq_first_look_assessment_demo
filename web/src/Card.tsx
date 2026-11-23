@@ -112,7 +112,7 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
     body =
       kind === "output" ? (
         <>
-          <div className="eyebrow">{refId === s.roots.value ? "Customer value" : "Emissions avoided"}</div>
+          <div className="eyebrow">{refId === s.roots.value ? "Customer value" : "Carbon avoided"}</div>
           <div className="big">{r ? fmt(r.base, n.unit) : "…"}</div>
           {r && <div className="mono small">range {fmt(r.low, n.unit)} – {fmt(r.high, n.unit)}</div>}
         </>

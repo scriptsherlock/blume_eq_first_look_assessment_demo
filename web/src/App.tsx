@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Background, BackgroundVariant, Controls, ReactFlow, ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { Background, BackgroundVariant, ReactFlow, ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
 
 import { Card, Ctx, shortDate } from "./Card";
+import { Summary } from "./Summary";
 import { buildGraph } from "./layout";
 import { fold, type State } from "./reducer";
 import { evaluate } from "./evaluator";
 import { fmt, fmtRange, STATUS_CLASS } from "./format";
-import type { Assumption, Diff, RunEvent } from "./types";
+import type { Assumption, RunEvent } from "./types";
 
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
 const nodeTypes = { card: Card };
@@ -126,22 +127,20 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
   return (
     <div className="start">
       <div className="start-inner">
-        <div className="eyebrow">First-look assessment</div>
         <h1>Evidence Map</h1>
         <p className="lede">
-          Paste a company page. Agents pull out every claim, look for independent evidence, argue against it, build
-          one model that links customer value to emissions avoided, and end with the five questions most worth asking
-          the founder.
+          Paste a company page. Get the questions worth asking its founder, and a model of what the product is
+          worth to customers and to the climate.
         </p>
 
         <div className="shift">
-          <div>
-            <div className="eyebrow">Today</div>
-            <p>Every first look starts from a blank spreadsheet. What the team learned last time sits in someone's notes, and every unknown is a fresh personal guess.</p>
+          <div className="shift-before">
+            <h2>Today</h2>
+            <p>Each look at a company starts from a blank page.</p>
           </div>
-          <div>
-            <div className="eyebrow">With Evidence Map</div>
-            <p>Every look starts from the last one. Claims are tested and modelled in minutes, guesses are anchored to how the firm sized similar companies before, and the analyst's job becomes choosing which uncertainty to resolve next.</p>
+          <div className="shift-after">
+            <h2>With Evidence Map</h2>
+            <p>Each look starts from the last one and ends in questions for the founder.</p>
           </div>
         </div>
 
@@ -154,34 +153,34 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
           }}
         >
           <input
+            aria-label="Company page address"
             placeholder="https://company.com/case-study"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             disabled={!serverLive}
           />
-          <button disabled={!serverLive || !url}>Run live</button>
+          <button disabled={!serverLive || !url}>Run</button>
         </form>
-        <div className="muted small">
+        <p className="status-line">
           {serverLive === null
-            ? "Checking for a local server…"
+            ? "Checking for the local server…"
             : serverLive
-              ? "Local server connected. Live runs use Gemini and a keyless web search; a run takes about 10 minutes."
-              : "Live runs need the local server and a Gemini key (see README). Saved runs below work anywhere."}
-        </div>
-        {err && <div className="error">{err}</div>}
+              ? "Connected. A live run takes about ten minutes."
+              : "Live runs need the local server. Saved runs work anywhere."}
+        </p>
+        {err && <p className="error">{err}</p>}
 
-        <h2>Saved runs</h2>
+        <h2 className="runs-title">Saved runs</h2>
         <div className="replays">
           {replays.map((r) => (
             <button key={r.file} className="replay-card" onClick={() => onReplay(r.file)}>
-              <div className="title">{r.name}{r.look && <span className="pill">{r.look}</span>}</div>
-              <div className="muted small">{r.blurb}</div>
+              <span className="rc-name">{r.name}</span>
+              {r.look && <span className={`chip ${r.look === "second look" ? "chip-dark" : ""}`}>{r.look}</span>}
+              <span className="rc-blurb">{r.blurb}</span>
             </button>
           ))}
         </div>
-        <p className="disclaimer">
-          Illustrative, public data only; not Blume's or the company's figures.
-        </p>
+        <p className="fineprint">Illustrative, public data only. Not Blume's or the company's figures.</p>
       </div>
     </div>
   );
@@ -208,7 +207,11 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Override>>({});
-  const [showQs, setShowQs] = useState(true);
+  const [view, setView] = useState<"summary" | "working">("summary");
+  const openNode = (id: string) => {
+    setSelected(id);
+    setView("working");
+  };
 
   useEffect(() => setOverrides({}), [s.revision, s.runId]);
 
@@ -229,12 +232,11 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
   const { nodes, edges } = useMemo(() => buildGraph(s, assumptions, ev, selected), [s, assumptions, ev, selected]);
   const edited = useMemo(() => new Set(Object.keys(overrides)), [overrides]);
 
-  // Re-fit when the graph grows or the right-hand column opens or closes.
-  // Re-fit when the graph grows, the run finishes, or the right-hand column opens or closes.
+  // Re-fit when the graph grows, the run finishes, the view changes, or the right-hand column opens or closes.
   // Debounced so it runs once the stream pauses and React Flow has measured the new cards.
   const rf = useReactFlow();
-  const sideOpen = !!selected || (showQs && s.questions.length > 0);
-  const fitKey = `${nodes.length}|${sideOpen}|${s.finished}`;
+  const sideOpen = !!selected;
+  const fitKey = `${nodes.length}|${sideOpen}|${s.finished}|${view}`;
   useEffect(() => {
     const t = setTimeout(() => {
       requestAnimationFrame(() => rf.fitView({ duration: 300, padding: 0.08 }));
@@ -244,51 +246,77 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
 
   return (
     <Ctx.Provider value={{ s, assumptions, ev, edited }}>
-      <div className="app">
-        <Rail s={s} onHome={onHome} />
-        <div className="canvas">
-          <div className="banner">
-            {s.label || "Illustrative, public data only"}
-            {s.mode === "sample" && <span className="pill pill-warn">sample run · hand-authored, not model output</span>}
-          </div>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            onNodeClick={(_, n) => setSelected(n.id)}
-            onPaneClick={() => setSelected(null)}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            minZoom={0.15}
-            fitView
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background variant={BackgroundVariant.Dots} gap={22} size={1} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-          <Columns />
-          {s.questions.length > 0 && !showQs && !selected && (
-            <button className="qs-toggle" onClick={() => setShowQs(true)}>Founder questions ({s.questions.length})</button>
-          )}
-        </div>
-        {selected && (
-          <Drawer
-            id={selected}
-            s={s}
-            assumptions={assumptions}
-            live={live}
-            override={(id, o) => setOverrides((x) => ({ ...x, [id]: o }))}
-            reset={(id) => setOverrides(({ [id]: _, ...rest }) => rest)}
-            onWhatIf={onWhatIf}
-            onClose={() => setSelected(null)}
-          />
+      <div className={`app view-${view}`}>
+        <TopBar s={s} view={view} setView={setView} onHome={onHome} />
+        {view === "summary" ? (
+          <Summary s={s} assumptions={assumptions} ev={ev} onOpen={openNode} />
+        ) : (
+          <>
+            <Rail s={s} />
+            <div className="canvas">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                onNodeClick={(_, n) => setSelected(n.id)}
+                onPaneClick={() => setSelected(null)}
+                nodesDraggable={false}
+                nodesConnectable={false}
+                minZoom={0.15}
+                fitView
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
+              </ReactFlow>
+              <Columns />
+            </div>
+            {selected && (
+              <Drawer
+                id={selected}
+                s={s}
+                assumptions={assumptions}
+                live={live}
+                override={(id, o) => setOverrides((x) => ({ ...x, [id]: o }))}
+                reset={(id) => setOverrides(({ [id]: _, ...rest }) => rest)}
+                onWhatIf={onWhatIf}
+                onClose={() => setSelected(null)}
+              />
+            )}
+          </>
         )}
-        {!selected && s.questions.length > 0 && showQs && (
-          <Questions s={s} assumptions={assumptions} onClose={() => setShowQs(false)} />
-        )}
-        <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={replay} onWhatIf={onWhatIf} />
+        <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={replay} onWhatIf={onWhatIf} compact={view === "summary"} />
       </div>
     </Ctx.Provider>
+  );
+}
+
+function TopBar({ s, view, setView, onHome }: {
+  s: State;
+  view: "summary" | "working";
+  setView: (v: "summary" | "working") => void;
+  onHome: () => void;
+}) {
+  const followUp = s.memory.some((m) => m.role === "history");
+  const status = s.error
+    ? "Stopped"
+    : s.finished
+      ? "Finished"
+      : s.activeAgent
+        ? (AGENT_LABEL[s.activeAgent] ?? s.activeAgent)
+        : "Starting";
+  return (
+    <header className="topbar">
+      <button className="back" onClick={onHome} aria-label="Back to all runs">&larr;</button>
+      <div className="tb-title">
+        <h1>{s.company || "Reading the page"}</h1>
+        <span className="tb-look">{followUp ? "Follow-up look" : "First look"}</span>
+      </div>
+      <span className={`tb-status ${s.finished ? "" : "live"}`}>{status}</span>
+      <div className="seg" role="tablist" aria-label="View">
+        <button role="tab" aria-selected={view === "summary"} onClick={() => setView("summary")}>Summary</button>
+        <button role="tab" aria-selected={view === "working"} onClick={() => setView("working")}>Show the working</button>
+      </div>
+    </header>
   );
 }
 
@@ -301,24 +329,23 @@ function Columns() {
 }
 
 const AGENT_LABEL: Record<string, string> = {
-  extractor: "Extractor",
-  researcher: "Researcher",
-  sceptic: "Sceptic",
-  modeller: "Modeller",
-  evaluator: "Evaluator",
-  questioner: "Questioner",
-  memory: "Memory",
+  extractor: "Reading the page",
+  researcher: "Searching for evidence",
+  sceptic: "Arguing against",
+  modeller: "Building the model",
+  evaluator: "Doing the maths",
+  questioner: "Writing questions",
+  memory: "Checking memory",
 };
 
-function Rail({ s, onHome }: { s: State; onHome: () => void }) {
+function Rail({ s }: { s: State }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: "smooth" });
   }, [s.steps.length]);
   return (
     <aside className="rail">
-      <button className="link" onClick={onHome}>← Evidence Map</button>
-      <div className="rail-company">{s.company || "…"}</div>
+      <h2 className="rail-title">What the agents did</h2>
       <div className="rail-steps" ref={ref}>
         {s.steps.map((st) => (
           <div key={st.seq} className={`step ${st.done ? "done" : "active"}`}>
@@ -341,30 +368,33 @@ function Rail({ s, onHome }: { s: State; onHome: () => void }) {
   );
 }
 
-function BottomBar({ s, ev, edited, live, replay, onWhatIf }: {
+function BottomBar({ s, ev, edited, live, replay, onWhatIf, compact }: {
   s: State;
   ev: State["evaluation"];
   edited: boolean;
   live: boolean;
   replay: ReplayCtl | null;
   onWhatIf: (t: string) => void;
+  compact: boolean;
 }) {
   const [text, setText] = useState("");
   return (
     <footer className="bottom">
-      <div className="headline">
-        <div>
-          <div className="eyebrow">Customer value</div>
-          <div className="mono">{ev ? fmtRange(ev.value.low, ev.value.base, ev.value.high, ev.value.unit) : "—"}</div>
+      {!compact && (
+        <div className="headline">
+          <div>
+            <span className="hl-label">Customer value</span>
+            <span className="hl-value">{ev ? fmtRange(ev.value.low, ev.value.base, ev.value.high, ev.value.unit) : "—"}</span>
+          </div>
+          <div>
+            <span className="hl-label">Carbon avoided</span>
+            <span className="hl-value">{ev ? fmtRange(ev.impact.low, ev.impact.base, ev.impact.high, ev.impact.unit) : "—"}</span>
+          </div>
+          {edited && <span className="pill pill-edit">Your edits applied</span>}
         </div>
-        <div>
-          <div className="eyebrow">Emissions avoided</div>
-          <div className="mono">{ev ? fmtRange(ev.impact.low, ev.impact.base, ev.impact.high, ev.impact.unit) : "—"}</div>
-        </div>
-        {edited && <span className="pill pill-edit">your edits applied</span>}
-      </div>
+      )}
 
-      <form
+      {live && <form
         className="whatif"
         onSubmit={(e) => {
           e.preventDefault();
@@ -374,11 +404,11 @@ function BottomBar({ s, ev, edited, live, replay, onWhatIf }: {
       >
         <input
           disabled={!live || !s.finished}
-          placeholder={live ? "What if only a third of visits are avoidable?" : "What-if needs a live run; edit assumptions by clicking them"}
+          placeholder={live ? "Ask a what-if, e.g. only a third of visits are avoidable" : "What-ifs need a live run"}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-      </form>
+      </form>}
 
       {replay && (
         <div className="replay-ctl">
@@ -404,80 +434,6 @@ function BottomBar({ s, ev, edited, live, replay, onWhatIf }: {
         </div>
       )}
     </footer>
-  );
-}
-
-function SinceLastLook({ diff }: { diff: Diff }) {
-  const narrowed = diff.assumptions.filter((a) => a.change === "narrowed" || a.became_sourced);
-  const widened = diff.assumptions.filter((a) => a.change === "widened" || a.change === "base moved" || a.change === "redefined");
-  const fresh = diff.assumptions.filter((a) => a.change === "new");
-  const verdicts = diff.claims.filter((c) => c.change === "verdict changed");
-  const newClaims = diff.claims.filter((c) => c.change === "new");
-  const open = diff.questions.filter((q) => q.status === "still open");
-  const rng = (r?: { low: number; high: number; unit: string }) => (r ? `${fmt(r.low, r.unit)}–${fmt(r.high, r.unit)}` : "");
-  return (
-    <section className="since">
-      <div className="eyebrow">Since the last look · {shortDate(diff.previous_date)}</div>
-      <ul>
-        {narrowed.map((a) => (
-          <li key={a.assumption_id}><b>Narrowed:</b> {a.label} {rng(a.before)} → {rng(a.now)}{a.became_sourced ? " (now sourced)" : ""}</li>
-        ))}
-        {widened.map((a) => (
-          <li key={a.assumption_id}><b>{a.change === "widened" ? "Widened" : "Changed"}:</b> {a.label} {rng(a.before)} → {rng(a.now)}</li>
-        ))}
-        {verdicts.map((c) => (
-          <li key={c.text}><b>Verdict:</b> {c.text} — {c.before} → {c.now}</li>
-        ))}
-        {newClaims.length > 0 && <li><b>New claims:</b> {newClaims.length} not seen before</li>}
-        {fresh.length > 0 && <li><b>New assumptions:</b> {fresh.map((a) => a.label).join("; ")}</li>}
-        {open.length > 0 && <li><b>Still open:</b> {open.length} question{open.length > 1 ? "s" : ""} from last time asked again</li>}
-        {!narrowed.length && !widened.length && !verdicts.length && !newClaims.length && !fresh.length && (
-          <li>No material change from the last look.</li>
-        )}
-      </ul>
-    </section>
-  );
-}
-
-function Questions({ s, assumptions, onClose }: { s: State; assumptions: Assumption[]; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const label = (id: string) => assumptions.find((a) => a.id === id)?.label ?? id;
-  const email =
-    `Hi,\n\nThanks for the conversation so far. Ahead of our next call, it would help to understand a few points:\n\n` +
-    s.questions.map((q, i) => `${i + 1}. ${q.text}`).join("\n") +
-    `\n\nAny data you can share in advance would be very welcome.\n\nBest regards`;
-  return (
-    <aside className="questions">
-      {s.diff && <SinceLastLook diff={s.diff} />}
-      <div className="q-head">
-        <div>
-          <div className="eyebrow">Next founder call</div>
-          <div className="title">Five questions, ranked by how much the answer moves the result</div>
-        </div>
-        <button className="link" onClick={onClose}>×</button>
-      </div>
-      <ol>
-        {s.questions.map((q) => (
-          <li key={q.id}>
-            <div>
-              {q.asked_before && <span className="pill pill-warn">still open from last look</span>} {q.text}
-            </div>
-            <div className="muted small">
-              Targets “{label(q.targets_assumption_id)}” (sensitivity #{q.sensitivity_rank}). {q.why_it_matters}
-            </div>
-          </li>
-        ))}
-      </ol>
-      <button
-        onClick={() => {
-          navigator.clipboard.writeText(email);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        }}
-      >
-        {copied ? "Copied" : "Copy as email"}
-      </button>
-    </aside>
   );
 }
 
