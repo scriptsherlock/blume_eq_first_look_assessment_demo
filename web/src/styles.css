@@ -486,3 +486,59 @@ button.num-row:hover, .num-item.open > .num-row { background: #efeddf; }
 .card-output { border-radius: var(--r-md); }
 .card-assumption.judgement { border-style: solid; }
 .outputs { border-radius: var(--r-lg); }
+
+
+/* ================================================================ v5: use the whole page */
+/* Type scales with the window: ~16px on a laptop, ~19px on a large monitor. */
+body { font-size: clamp(16px, 0.42vw + 10px, 19px); }
+
+.summary {
+  max-width: none; margin: 0; width: 100%;
+  padding: clamp(14px, 1.4vw, 28px) clamp(16px, 2vw, 40px);
+  display: grid; gap: clamp(14px, 1.3vw, 24px);
+  grid-template-columns: minmax(300px, 0.85fr) minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: stretch; overflow: hidden; min-height: 0;
+}
+.sum-col { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: clamp(14px, 1.3vw, 24px); }
+.sum-col > .panel { flex: none; }
+.sum-col .questions-panel { flex: 1 0 auto; }
+.summary .fineprint { text-align: left; }
+
+/* results as a tall column: one figure above the other */
+.outputs.column { grid-template-columns: 1fr; gap: clamp(18px, 2vh, 32px); padding: clamp(20px, 1.8vw, 34px); flex: none; align-content: start; }
+.outputs.column .figure-value { font-size: clamp(46px, 3.6vw, 76px); }
+.outputs.column .figure-value .per { font-size: clamp(18px, 1.2vw, 26px); }
+.outputs.column .figure h2 { font-size: clamp(13px, 0.8vw, 16px); }
+.outputs.column .figure-range { font-size: clamp(12px, 0.75vw, 15px); }
+.outputs.column .outputs-why { font-size: clamp(15px, 0.95vw, 19px); line-height: 1.5; }
+
+/* scale the reading text with the page */
+.panel-head h2 { font-size: clamp(20px, 1.4vw, 28px); }
+.q { font-size: clamp(16px, 1vw, 20px); }
+.q-meta, .qlist summary { font-size: clamp(12px, 0.75vw, 14px); }
+.claim-row { font-size: clamp(15px, 0.9vw, 18px); }
+.since-list { font-size: clamp(15px, 0.9vw, 18px); }
+
+/* working page: full width too */
+.working { max-width: none; margin: 0; padding: clamp(16px, 1.6vw, 32px) clamp(16px, 2.4vw, 48px); }
+.w-head h2 { font-size: clamp(24px, 1.8vw, 34px); }
+.w-head p { font-size: clamp(16px, 1vw, 20px); }
+.cc-claim { font-size: clamp(17px, 1.1vw, 21px); }
+.cc-objection, .cc-evidence p { font-size: clamp(15px, 0.95vw, 18px); }
+.equations li { font-size: clamp(16px, 1vw, 20px); }
+.num-row { font-size: clamp(15px, 0.95vw, 18px); }
+
+/* start page: wider on big screens */
+.start { max-width: 1600px; padding: clamp(32px, 4vh, 64px) clamp(20px, 3vw, 56px); }
+.start h1 { font-size: clamp(44px, 3.6vw, 72px); }
+.lede { font-size: clamp(19px, 1.25vw, 25px); }
+.how li { font-size: clamp(16px, 1vw, 20px); }
+
+@media (max-width: 1150px) {
+  .summary { grid-template-columns: 1fr; overflow-y: auto; }
+  .sum-col { overflow: visible; }
+  .outputs.column { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  .outputs.column { grid-template-columns: 1fr; }
+}

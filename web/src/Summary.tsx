@@ -20,20 +20,22 @@ export function Summary({ s, assumptions, ev, onOpen }: {
 }) {
   return (
     <main className="summary">
-      <Outputs s={s} assumptions={assumptions} ev={ev} />
-      <div className="summary-cols">
-        <Questions s={s} assumptions={assumptions} />
-        <div className="summary-side">
-          {s.diff && <SinceLastLook diff={s.diff} />}
-          <Claims s={s} onOpen={onOpen} />
-          {s.notes.length > 0 && (
-            <div className="notes">
-              {s.notes.map((n) => <p key={n}>{n}</p>)}
-            </div>
-          )}
-        </div>
+      <div className="sum-col sum-results">
+        <Outputs s={s} assumptions={assumptions} ev={ev} variant="column" />
+        <p className="fineprint">{s.label || "Illustrative, public data only."}</p>
       </div>
-      <p className="fineprint">{s.label || "Illustrative, public data only."}</p>
+      <div className="sum-col">
+        <Questions s={s} assumptions={assumptions} />
+      </div>
+      <div className="sum-col summary-side">
+        {s.diff && <SinceLastLook diff={s.diff} />}
+        <Claims s={s} onOpen={onOpen} />
+        {s.notes.length > 0 && (
+          <div className="notes">
+            {s.notes.map((n) => <p key={n}>{n}</p>)}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
@@ -44,7 +46,7 @@ export function Outputs({ s, assumptions, ev, variant = "full", edited = false }
   s: State;
   assumptions: Assumption[];
   ev?: Evaluation;
-  variant?: "full" | "strip";
+  variant?: "full" | "strip" | "column";
   edited?: boolean;
 }) {
   if (!ev) {
