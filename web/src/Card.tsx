@@ -4,6 +4,11 @@ import type { CardData } from "./layout";
 import type { State } from "./reducer";
 import type { Assumption, Evaluation } from "./types";
 import { fmt, STATUS_CLASS } from "./format";
+import { BestGuess, RangeLine } from "./RangeLine";
+
+function ordinal(n: number): string {
+  return n === 1 ? "Biggest effect" : `${n}${n === 2 ? "nd" : n === 3 ? "rd" : "th"} biggest effect`;
+}
 
 export interface CardCtx {
   s: State;
@@ -96,14 +101,15 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
     body = (
       <>
         <div className="eyebrow">
-          {a.judgement_call ? "Estimate" : "Sourced"}
-          {rank && <span className="pill">#{rank} sensitivity</span>}
-          {edited.has(refId) && <span className="pill pill-edit">edited</span>}
+          {a.low === a.base && a.base === a.high && /conversion/i.test(`${a.label} ${a.source_note ?? ""}`)
+            ? <span className="chip">Unit conversion</span>
+            : <span className={`chip ${a.judgement_call ? "chip-est" : "chip-ok"}`}>{a.judgement_call ? "Estimate" : "Sourced"}</span>}
+          {rank && <span className="note-plain">{ordinal(rank)}</span>}
+          {edited.has(refId) && <span className="note-plain note-edit">edited</span>}
         </div>
         <div className="text small">{a.label}</div>
-        <div className="mono small">
-          {fmt(a.low, a.unit)} · <b>{fmt(a.base, a.unit)}</b> · {fmt(a.high, a.unit)}
-        </div>
+        <div className="as-value"><BestGuess base={a.base} unit={a.unit} /><span className="muted"> best guess</span></div>
+        <RangeLine low={a.low} base={a.base} high={a.high} unit={a.unit} compact />
       </>
     );
   } else {

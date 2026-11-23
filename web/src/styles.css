@@ -412,3 +412,77 @@ button.num-row:hover, .num-item.open > .num-row { background: #efeddf; }
 .outputs.strip .figure-value .per { font-size: 17px; }
 .outputs.strip .outputs-why { font-size: 15px; padding-top: 8px; }
 .outputs-edited { grid-column: 1 / -1; font: 500 13px/1.4 var(--sans); color: var(--forest); background: var(--mark); border-radius: var(--r-sm); padding: 6px 10px; width: fit-content; }
+
+
+/* ================================================================ v4: less kit, more working paper */
+:root {
+  --paper: #ffffff;
+  --sheet: #f6f5ef;
+  --line: #e4e2d8;
+  --r-lg: 12px;
+  --r-md: 8px;
+  --r-sm: 6px;
+}
+
+/* labels: a coloured dot and a word, like a margin note, not a pill */
+.chip, .pill {
+  background: none !important; border: none !important; padding: 0;
+  font: 500 13px/1.3 var(--sans); color: var(--muted); gap: 6px;
+}
+.chip::before, .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.chip-ok, .pill-ok, .stance-supports { color: var(--ok) !important; }
+.chip-warn, .pill-warn, .chip-est { color: var(--warn) !important; }
+.chip-bad, .pill-bad, .stance-contradicts { color: var(--bad) !important; }
+.stance-context { color: var(--muted) !important; }
+.chip-pending { color: var(--muted) !important; }
+.chip-pending::before { background: none; border: 1px solid currentColor; }
+.chip-dark { color: var(--forest) !important; font-weight: 600; }
+.pill-edit, .pill-mem { color: var(--teal) !important; }
+.chip-open { color: var(--ink) !important; font-weight: 600; }
+.qlist li.top .chip-open { background: none !important; color: var(--ink) !important; }
+.note-plain { font: 13px/1.3 var(--sans); color: var(--muted); }
+.note-edit { color: var(--teal); font-weight: 500; }
+
+/* best guess + range line (one-row forest plot) */
+.best { font-weight: 600; font-variant-numeric: tabular-nums; }
+.rline { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; align-items: center; gap: 8px; font: 12px/1 var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; }
+.rl-track { position: relative; height: 12px; }
+.rl-span { position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: var(--forest); opacity: 0.35; border-radius: 2px; }
+.rl-span::before, .rl-span::after { content: ""; position: absolute; top: -4px; width: 2px; height: 10px; background: var(--forest); }
+.rl-span::before { left: 0; } .rl-span::after { right: 0; }
+.rl-dot { position: absolute; top: 1px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--forest); }
+.rline.fixed .rl-dot { left: 0 !important; margin-left: 0; }
+.num-range { display: flex; flex-direction: column; gap: 6px; }
+.num-range .best { font-size: 18px; }
+.as-value { margin-top: 6px; font-size: 16px; }
+.as-value .best { font-size: 18px; }
+.as-value .muted { font: 12px/1 var(--sans); }
+.card .rline { margin-top: 6px; }
+
+/* summary and working: fewer boxes */
+.panel { border: none; background: var(--sheet); border-radius: var(--r-lg); }
+.claim-rows { gap: 0; }
+.claim-card { background: none; border: none; border-radius: 0; border-top: 1px solid var(--line); padding: 20px 0; }
+.claim-row-head { padding: 0; }
+.cc-quote { border-left-color: var(--line); }
+.equations li { border: none; border-radius: var(--r-sm); }
+.numbers { border: none; background: var(--sheet); border-radius: var(--r-lg); }
+.mem-col, .runlog { border: none; }
+.since-open { border-radius: var(--r-sm); }
+.qlist li { border-radius: var(--r-sm); }
+.replay-card { background: #fff; border-radius: var(--r-md); }
+.start-runs { border: none; border-radius: var(--r-lg); }
+.shift > div { border-radius: var(--r-md); }
+.shift-before { border: none; }
+
+/* map cards: no coloured side stripes, one small radius */
+.card { border-radius: var(--r-md); }
+.card-claim, .card-claim.status-ok, .card-claim.status-warn, .card-claim.status-bad,
+.card-evidence, .card-evidence.stance-supports, .card-evidence.stance-contradicts, .card-evidence.stance-context {
+  border-left: 1px solid var(--line);
+}
+.card-objection { border: none; }
+.card-op { border-radius: var(--r-md); }
+.card-output { border-radius: var(--r-md); }
+.card-assumption.judgement { border-style: solid; }
+.outputs { border-radius: var(--r-lg); }

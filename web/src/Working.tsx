@@ -5,6 +5,7 @@ import type { Assumption, Evaluation, TreeNode } from "./types";
 import { fmt, STATUS_CLASS } from "./format";
 import { shortDate } from "./Card";
 import { Outputs } from "./Summary";
+import { BestGuess, RangeLine } from "./RangeLine";
 
 type Override = Pick<Assumption, "low" | "base" | "high">;
 
@@ -43,6 +44,10 @@ export function Working({ s, assumptions, ev, edited, override, reset }: {
       <p className="fineprint">{s.label || "Illustrative, public data only."}</p>
     </main>
   );
+}
+
+function isConversion(a: Assumption): boolean {
+  return a.low === a.base && a.base === a.high && /conversion/i.test(`${a.label} ${a.source_note ?? ""}`);
 }
 
 // ---------------------------------------------------------------- claims
@@ -142,7 +147,7 @@ function Model({ s, assumptions, ev, edited, override, reset }: {
   const score = new Map((ev?.sensitivity ?? []).map((x) => [x.assumption_id, x.value_swing / vb + x.impact_swing / ib]));
   const maxScore = Math.max(1e-9, ...score.values());
   const ordered = [...assumptions].sort((a, b) => (score.get(b.id) ?? 0) - (score.get(a.id) ?? 0));
-  const estimates = assumptions.filter((a) => a.judgement_call).length;
+  const estimates = assumptions.filter((a) => a.judgement_call && !isConversion(a)).length;
 
   return (
     <section className="w-section">
@@ -176,7 +181,7 @@ function Model({ s, assumptions, ev, edited, override, reset }: {
         <h3>The numbers it uses</h3>
         <p>
           <span className="chip chip-est">Estimate</span> means no source gave this number, so the model uses a deliberately wide
-          range. {estimates > 0 && <>There {estimates === 1 ? "is" : "are"} {estimates} here. </>}The founder questions target
+          range. Each line runs from the lowest to the highest plausible value; the dot is the best guess. {estimates > 0 && <>There {estimates === 1 ? "is" : "are"} {estimates} here. </>}The founder questions target
           the estimates that move the result most. Click a row to try your own range.
         </p>
       </div>
@@ -184,7 +189,7 @@ function Model({ s, assumptions, ev, edited, override, reset }: {
       <div className="numbers" role="table">
         <div className="num-row num-head" role="row">
           <span role="columnheader">Number</span>
-          <span role="columnheader">Low – base – high</span>
+          <span role="columnheader">Best guess, and the range it could fall in</span>
           <span role="columnheader">Moves the result</span>
           <span role="columnheader">Where it comes from</span>
         </div>
@@ -200,13 +205,15 @@ function Model({ s, assumptions, ev, edited, override, reset }: {
                   {edited.has(a.id) && <span className="chip pill-edit">Edited</span>}
                 </span>
                 <span className="num-range">
-                  {fmt(a.low, a.unit)} – <b>{fmt(a.base, a.unit)}</b> – {fmt(a.high, a.unit)}
+                  <BestGuess base={a.base} unit={a.unit} />
+                  <RangeLine low={a.low} base={a.base} high={a.high} unit={a.unit} />
                 </span>
                 <span className="num-bar" aria-label={`moves the result ${Math.round((sc / maxScore) * 100)} out of 100`}>
                   <span style={{ width: `${Math.max(3, (sc / maxScore) * 100)}%` }} />
                 </span>
                 <span className="num-source">
-                  {a.judgement_call ? <span className="chip chip-est">Estimate</span> : <span className="chip chip-ok">Sourced</span>}
+                  {isConversion(a) ? <span className="chip">Unit conversion</span>
+                    : a.judgement_call ? <span className="chip chip-est">Estimate</span> : <span className="chip chip-ok">Sourced</span>}
                   {mem && <span className="muted"> {mem.role === "history" ? "from last look" : `like ${mem.record.company}`}</span>}
                 </span>
               </button>
