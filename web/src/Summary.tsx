@@ -124,9 +124,12 @@ function Questions({ s, assumptions }: { s: State; assumptions: Assumption[] }) 
     `\n\nAny data you can share in advance would be very welcome.\n\nBest regards`;
 
   return (
-    <section className="panel questions-panel">
-      <header className="panel-head">
-        <h2>Ask the founder</h2>
+    <section className="ask">
+      <header className="ask-head">
+        <div>
+          <h2>Ask the founder</h2>
+          <p className="ask-sub">In order: the first answer moves the result most.</p>
+        </div>
         {s.questions.length > 0 && (
           <button
             className="btn-quiet"
@@ -149,14 +152,11 @@ function Questions({ s, assumptions }: { s: State; assumptions: Assumption[] }) 
               <p className="q">{q.text}</p>
               <div className="q-meta">
                 {q.asked_before && <span className="chip chip-open">Still open from last look</span>}
-                <span>About: {label(q.targets_assumption_id)}</span>
-              </div>
-              {q.why_it_matters && (
                 <details>
-                  <summary>Why this matters</summary>
-                  <p>{q.why_it_matters}</p>
+                  <summary>Why ask this</summary>
+                  <p><b>{label(q.targets_assumption_id)}.</b> {q.why_it_matters}</p>
                 </details>
-              )}
+              </div>
             </li>
           ))}
         </ol>

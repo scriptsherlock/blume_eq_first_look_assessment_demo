@@ -542,3 +542,65 @@ body { font-size: clamp(16px, 0.42vw + 10px, 19px); }
 @media (max-width: 700px) {
   .outputs.column { grid-template-columns: 1fr; }
 }
+
+
+/* ================================================================ v6: questions first, bigger type */
+body { font-size: clamp(17px, 0.55vw + 9px, 21px); }
+
+/* summary: page scrolls as one; results stay in view */
+.summary { overflow-y: auto; align-items: start; grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.65fr) minmax(0, 1fr); }
+.sum-col { overflow: visible; }
+.sum-results { position: sticky; top: 0; }
+.outputs.column .figure-value { font-size: clamp(40px, 2.8vw, 58px); }
+.outputs.column .figure-value .per { font-size: clamp(16px, 1vw, 22px); }
+.outputs.column .outputs-why { font-size: clamp(15px, 0.9vw, 18px); }
+
+/* ask the founder: the headline of the page */
+.ask { display: flex; flex-direction: column; gap: clamp(12px, 1vw, 18px); }
+.ask-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.ask-head h2 { font-size: clamp(32px, 2.5vw, 48px); line-height: 1.05; letter-spacing: -0.02em; }
+.ask-sub { font: clamp(13px, 0.8vw, 15px)/1.4 var(--sans); color: var(--muted); margin-top: 6px; }
+.ask .qlist { gap: clamp(8px, 0.7vw, 14px); }
+.ask .qlist li { padding: clamp(14px, 1vw, 20px) clamp(16px, 1.2vw, 24px) clamp(14px, 1vw, 20px) clamp(52px, 3.4vw, 64px); background: var(--sheet); }
+.ask .qlist li.top { background: var(--mark); }
+.ask .qlist li::before { left: clamp(14px, 1vw, 20px); top: clamp(15px, 1.05vw, 21px); width: 28px; height: 28px; font-size: 14px; }
+.ask .q { font-size: clamp(19px, 1.25vw, 25px); line-height: 1.38; font-weight: 500; }
+.ask .q-meta { margin-top: 8px; gap: 14px; font-size: clamp(13px, 0.8vw, 15px); }
+.ask .q-meta details { margin: 0; }
+.ask .q-meta summary { font-size: inherit; }
+.ask .q-meta details[open] { flex-basis: 100%; }
+.ask .q-meta details p { font-size: clamp(14px, 0.9vw, 17px); color: var(--ink); margin-top: 6px; }
+
+/* claims list and side panels */
+.panel-head h2 { font-size: clamp(22px, 1.6vw, 32px); }
+.claim-row { font-size: clamp(16px, 1.02vw, 20px); }
+.since-list { font-size: clamp(16px, 1.02vw, 20px); }
+.chip, .pill { font-size: clamp(12px, 0.75vw, 14px); }
+
+/* working: claim set against its challenge */
+.w-head h2 { font-size: clamp(28px, 2.2vw, 42px); }
+.w-head p { font-size: clamp(16px, 1.05vw, 20px); }
+.claim-row-head, .claim-card { grid-template-columns: 1fr 1fr; gap: clamp(20px, 2.4vw, 48px); }
+.claim-row-head { font: 600 clamp(13px, 0.8vw, 15px)/1.2 var(--sans); color: var(--muted); }
+.claim-card { padding: clamp(18px, 1.4vw, 26px) 0; }
+.cc-claim { font-size: clamp(19px, 1.3vw, 26px); line-height: 1.35; font-weight: 500; }
+.cc-quote { font-size: clamp(15px, 0.95vw, 18px); }
+.cc-sources { margin-top: 12px; }
+.cc-none { font-size: clamp(14px, 0.85vw, 16px); }
+.cc-evidence { gap: 6px; }
+.cc-evidence li { font-size: clamp(15px, 0.95vw, 18px); line-height: 1.45; }
+.cc-evidence a { font: inherit; font-weight: 600; }
+.cc-challenge { border-left: 2px solid var(--line); padding-left: clamp(16px, 1.6vw, 32px); }
+.cc-objection { font-size: clamp(18px, 1.15vw, 23px); line-height: 1.4; }
+.cc-settle { font-size: clamp(15px, 0.95vw, 18px); margin-top: 12px; }
+.cc-settle b { display: block; margin-bottom: 2px; font-size: clamp(12px, 0.75vw, 14px); color: var(--muted); }
+.equations li, .num-row { font-size: clamp(16px, 1.05vw, 20px); }
+.numbers-head h3 { font-size: clamp(22px, 1.6vw, 32px); }
+.numbers-head p { font-size: clamp(16px, 1vw, 19px); }
+
+@media (max-width: 1150px) {
+  .sum-results { position: static; }
+  .claim-row-head { display: none; }
+  .claim-card { grid-template-columns: 1fr; }
+  .cc-challenge { border-left: none; padding-left: 0; }
+}

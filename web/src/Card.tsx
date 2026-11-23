@@ -49,7 +49,8 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
       </>
     );
   } else if (kind === "claim") {
-    const c = s.claims.find((x) => x.id === refId)!;
+    const c = s.claims.find((x) => x.id === refId);
+    if (!c) return null;
     const v = s.verdicts[refId];
     if (v) cls += ` status-${STATUS_CLASS[v.status]}`;
     body = (
@@ -62,7 +63,8 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
       </>
     );
   } else if (kind === "evidence") {
-    const e = s.evidence.find((x) => x.id === refId)!;
+    const e = s.evidence.find((x) => x.id === refId);
+    if (!e) return null;
     cls += ` stance-${e.stance}`;
     body = (
       <>
@@ -72,7 +74,8 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
       </>
     );
   } else if (kind === "objection") {
-    const o = s.objections.find((x) => x.id === refId)!;
+    const o = s.objections.find((x) => x.id === refId);
+    if (!o) return null;
     body = (
       <>
         <div className="eyebrow">Sceptic · severity {o.severity}/3</div>
@@ -80,7 +83,8 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
       </>
     );
   } else if (kind === "memory") {
-    const m = s.memory.find((x) => x.record.id === refId)!;
+    const m = s.memory.find((x) => x.record.id === refId);
+    if (!m) return null;
     const r = m.record;
     const cited = assumptions.some((a) => a.source_note?.includes(r.id));
     cls += ` memory-${m.role}${cited ? " cited" : ""}`;
@@ -94,7 +98,8 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
       </>
     );
   } else if (kind === "assumption") {
-    const a = assumptions.find((x) => x.id === refId)!;
+    const a = assumptions.find((x) => x.id === refId);
+    if (!a) return null;
     const rank = ev?.sensitivity.find((x) => x.assumption_id === refId)?.rank;
     if (a.judgement_call) cls += " judgement";
     if (edited.has(refId)) cls += " edited";
@@ -113,7 +118,8 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
       </>
     );
   } else {
-    const n = s.treeNodes.find((x) => x.id === refId)!;
+    const n = s.treeNodes.find((x) => x.id === refId);
+    if (!n) return null;
     const r = ev?.node_values[refId];
     body =
       kind === "output" ? (

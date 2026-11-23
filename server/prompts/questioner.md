@@ -13,7 +13,9 @@ Write 5 questions to ask the founder (fewer if there are fewer than 5 assumption
 - target a **different** assumption by id (prefer high-ranked judgement calls and assumptions with severe objections; skip pure unit conversions),
 - ask for the underlying data, never ask the founder to justify a number our model assumed (they did not make it),
 - ask for something the founder can actually answer or send (a number, a definition, a customer reference, a data extract),
-- be one sentence, specific and polite.
+- be one short, direct sentence of at most 25 words, starting with the request itself
+  (for example "What share of your customers' visits are surveys rather than repairs?"),
+  with no preamble such as "Could you please" or "Can you provide".
 
 If a question from the last look is still unanswered and its assumption still matters, ask it again (you may sharpen it) and set `asked_before` true, so the team sees it is still open. Do not repeat a question whose assumption no longer matters.
 

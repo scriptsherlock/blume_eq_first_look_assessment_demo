@@ -36,9 +36,9 @@ export default function App() {
     const txt = await (await fetch(`replays/${file}`)).text();
     const evs = txt.split("\n").filter(Boolean).map((l) => JSON.parse(l) as RunEvent);
     setEvents(evs);
-    setCursor(0);
+    setCursor(evs.length);
     setLive(false);
-    setPlaying(true);
+    setPlaying(false);
     setStarted(true);
   }, []);
 
@@ -70,12 +70,14 @@ export default function App() {
 
   const visible = live ? events : events.slice(0, cursor);
   const state = useMemo(() => fold(visible), [visible]);
+  const full = useMemo(() => fold(events), [events]);
 
   if (!started) return <Start onReplay={openReplay} onLive={openLive} />;
 
   return (
     <ReactFlowProvider>
       <MapView
+        full={full}
         state={state}
         live={live}
         onWhatIf={(text) => whatIf(state.runId, text, events.length, setEvents)}
@@ -210,7 +212,8 @@ interface ReplayCtl {
   setSpeed: (n: number) => void;
 }
 
-function MapView({ state: s, live, replay, onHome, onWhatIf }: {
+function MapView({ full: s, state: sm, live, replay, onHome, onWhatIf }: {
+  full: State;
   state: State;
   live: boolean;
   replay: ReplayCtl | null;
@@ -238,7 +241,29 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
     }
   }, [s.tree, s.evaluation, assumptions, overrides]);
 
-  const { nodes, edges } = useMemo(() => buildGraph(s, assumptions, ev, selected), [s, assumptions, ev, selected]);
+  const mapAssumptions = useMemo(
+    () => sm.assumptions.map((a) => (overrides[a.id] ? { ...a, ...overrides[a.id] } : a)),
+    [sm.assumptions, overrides],
+  );
+  const mapEv = useMemo(() => {
+    if (!sm.tree) return undefined;
+    if (!Object.keys(overrides).length) return sm.evaluation;
+    try {
+      return evaluate(sm.tree, mapAssumptions);
+    } catch {
+      return sm.evaluation;
+    }
+  }, [sm.tree, sm.evaluation, mapAssumptions, overrides]);
+  const { nodes, edges } = useMemo(() => buildGraph(sm, mapAssumptions, mapEv, selected), [sm, mapAssumptions, mapEv, selected]);
+
+  // Opening the Map plays the run from the start, so you watch it being built.
+  useEffect(() => {
+    if (view === "map" && replay) {
+      replay.setCursor(0);
+      replay.setPlaying(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
   const edited = useMemo(() => new Set(Object.keys(overrides)), [overrides]);
 
   // Re-fit when the graph grows, the run finishes, the view changes, or the right-hand column opens or closes.
@@ -254,7 +279,7 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
   }, [fitKey, rf]);
 
   return (
-    <Ctx.Provider value={{ s, assumptions, ev, edited }}>
+    <Ctx.Provider value={view === "map" ? { s: sm, assumptions: mapAssumptions, ev: mapEv, edited } : { s, assumptions, ev, edited }}>
       <div className={`app view-${view}`}>
         <TopBar s={s} view={view} setView={setView} onHome={onHome} />
         {view === "summary" ? (
@@ -270,10 +295,10 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
           />
         ) : (
           <>
-            <Rail s={s} />
+            <Rail s={sm} />
             <div className="canvas">
               <div className="map-results">
-                <Outputs s={s} assumptions={assumptions} ev={ev} variant="strip" edited={edited.size > 0} />
+                <Outputs s={sm} assumptions={mapAssumptions} ev={mapEv} variant="strip" edited={edited.size > 0} />
               </div>
               <div className="flow-wrap">
               <ReactFlow
@@ -286,7 +311,6 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
                 nodesConnectable={false}
                 minZoom={0.15}
                 fitView
-                proOptions={{ hideAttribution: true }}
               >
                 <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
               </ReactFlow>
@@ -296,8 +320,8 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
             {selected && (
               <Drawer
                 id={selected}
-                s={s}
-                assumptions={assumptions}
+                s={sm}
+                assumptions={mapAssumptions}
                 live={live}
                 override={(id, o) => setOverrides((x) => ({ ...x, [id]: o }))}
                 reset={(id) => setOverrides(({ [id]: _, ...rest }) => rest)}
@@ -307,7 +331,9 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
             )}
           </>
         )}
-        <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={replay} onWhatIf={onWhatIf} compact />
+        {(view === "map" || live) && (
+          <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={view === "map" ? replay : null} onWhatIf={onWhatIf} compact />
+        )}
       </div>
     </Ctx.Provider>
   );

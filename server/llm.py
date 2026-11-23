@@ -73,8 +73,16 @@ def _is_quota(e: Exception) -> bool:
     return getattr(e, "code", None) == 429 or "RESOURCE_EXHAUSTED" in str(e)
 
 
+NETWORK_ERRORS = ("ReadError", "ConnectError", "ReadTimeout", "ConnectTimeout", "RemoteProtocolError",
+                  "WriteError", "PoolTimeout", "ConnectionResetError", "ConnectionAbortedError")
+
+
 def _is_transient(e: Exception) -> bool:
-    return _is_quota(e) or getattr(e, "code", None) in (500, 503) or "UNAVAILABLE" in str(e)
+    """Worth retrying: rate limits, overload, and dropped connections (flaky home networks)."""
+    if _is_quota(e) or getattr(e, "code", None) in (500, 503) or "UNAVAILABLE" in str(e):
+        return True
+    chain = [e, e.__cause__, e.__context__]
+    return any(type(x).__name__ in NETWORK_ERRORS for x in chain if x is not None)
 
 
 def _call(**kw):

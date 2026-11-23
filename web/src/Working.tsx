@@ -58,12 +58,12 @@ function ClaimsTested({ s }: { s: State }) {
     <section className="w-section">
       <header className="w-head">
         <h2>The claims, tested</h2>
-        <p>Each claim is quoted from the page, checked against other sources, then argued against.</p>
+        <p>What the page says, set against the strongest objection to it.</p>
       </header>
       {s.claims.length === 0 && <p className="empty">Reading the page…</p>}
       <div className="claim-rows">
         <div className="claim-row-head" aria-hidden="true">
-          <span>What they claim</span><span>Independent evidence</span><span>The sceptic's challenge</span>
+          <span>They say</span><span>The challenge</span>
         </div>
         {s.claims.map((c) => {
           const v = s.verdicts[c.id];
@@ -71,31 +71,32 @@ function ClaimsTested({ s }: { s: State }) {
           const objection = s.objections.filter((o) => o.claim_id === c.id).sort((a, b) => b.severity - a.severity)[0];
           return (
             <article key={c.id} className="claim-card">
-              <div>
+              <div className="cc-say">
                 <span className={`chip chip-${v ? STATUS_CLASS[v.status] : "pending"}`}>{v ? VERDICT_LABEL[v.status] : "Checking"}</span>
                 <p className="cc-claim">{c.text}</p>
                 <blockquote className="cc-quote">“{c.quote}”</blockquote>
+                <div className="cc-sources">
+                  {evidence.length === 0 ? (
+                    <p className="cc-none">
+                      {v ? (searchOff ? "Not checked against other sources: web search was off for this run." : "No independent source found.") : "Searching for sources…"}
+                    </p>
+                  ) : (
+                    <ul className="cc-evidence">
+                      {evidence.map((e) => (
+                        <li key={e.id}>
+                          <span className={`chip stance-${e.stance}`}>{STANCE_LABEL[e.stance]}</span>{" "}
+                          <a href={e.url} target="_blank" rel="noreferrer">{e.publisher || "Source"}</a>: {e.summary}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
-              <div>
-                {evidence.length === 0 ? (
-                  <p className="cc-none">{v ? (searchOff ? "Not searched: web search was off for this run." : "No independent source found.") : "Searching…"}</p>
-                ) : (
-                  <ul className="cc-evidence">
-                    {evidence.map((e) => (
-                      <li key={e.id}>
-                        <span className={`chip stance-${e.stance}`}>{STANCE_LABEL[e.stance]}</span>
-                        <p>{e.summary}</p>
-                        <a href={e.url} target="_blank" rel="noreferrer">{e.publisher || "Source"}</a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div>
+              <div className="cc-challenge">
                 {objection ? (
                   <>
                     <p className="cc-objection">{objection.text}</p>
-                    <p className="cc-settle"><b>Would settle it:</b> {objection.what_would_resolve_it}</p>
+                    <p className="cc-settle"><b>What would settle it</b> {objection.what_would_resolve_it}</p>
                   </>
                 ) : (
                   <p className="cc-none">{v ? "No challenge raised." : "Waiting…"}</p>
