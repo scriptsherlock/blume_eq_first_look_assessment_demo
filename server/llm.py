@@ -25,7 +25,9 @@ MODEL_STRONG = os.getenv("MODEL_STRONG", "gemini-2.5-pro")
 CALL_DELAY_S = float(os.getenv("CALL_DELAY_S", "1.0"))
 # Set SEARCH=off to skip Google Search grounding (e.g. on API tiers without search quota).
 SEARCH_ENABLED = os.getenv("SEARCH", "on").lower() not in ("off", "0", "false")
-RATE_LIMIT_RETRIES = 3
+# A run makes dozens of calls; one overloaded moment should not end it.
+# Waits 15, 30, 45, 60, 60, 60 s (about 4.5 minutes) before giving up or falling back.
+RATE_LIMIT_RETRIES = int(os.getenv("RATE_LIMIT_RETRIES", "6"))
 # Used only when the main model stays overloaded (503) after retries.
 MODEL_FALLBACK = os.getenv("MODEL_FALLBACK", "")
 FALLBACK_USED: list[str] = []  # model ids actually used as fallback, for the run log
@@ -90,7 +92,7 @@ def _call(**kw):
                     FALLBACK_USED.append(MODEL_FALLBACK)
                     return _call(**{**kw, "model": MODEL_FALLBACK})
                 raise
-            time.sleep(15 * (attempt + 1))
+            time.sleep(min(60, 15 * (attempt + 1)))
 
 
 def generate_json(prompt: str, schema: type[T], model: str | None = None, system: str | None = None) -> T:
@@ -205,4 +207,4 @@ def _call_embed(**kw):
         except Exception as e:
             if not _is_transient(e) or attempt == RATE_LIMIT_RETRIES:
                 raise
-            time.sleep(15 * (attempt + 1))
+            time.sleep(min(60, 15 * (attempt + 1)))
