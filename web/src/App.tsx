@@ -5,6 +5,7 @@ import "./styles.css";
 
 import { Card, Ctx, shortDate } from "./Card";
 import { Summary } from "./Summary";
+import { Working } from "./Working";
 import { buildGraph } from "./layout";
 import { fold, type State } from "./reducer";
 import { evaluate } from "./evaluator";
@@ -126,23 +127,12 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
 
   return (
     <div className="start">
-      <div className="start-inner">
-        <h1>Evidence Map</h1>
+      <div className="start-main">
+        <h1>First Look Assessment</h1>
         <p className="lede">
-          Paste a company page. Get the questions worth asking its founder, and a model of what the product is
-          worth to customers and to the climate.
+          Paste a page about a company. Get the questions worth asking its founder, and an honest range for what the
+          product is worth to customers and to the climate.
         </p>
-
-        <div className="shift">
-          <div className="shift-before">
-            <h2>Today</h2>
-            <p>Each look at a company starts from a blank page.</p>
-          </div>
-          <div className="shift-after">
-            <h2>With Evidence Map</h2>
-            <p>Each look starts from the last one and ends in questions for the founder.</p>
-          </div>
-        </div>
 
         <form
           className="url-form"
@@ -159,18 +149,40 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
             onChange={(e) => setUrl(e.target.value)}
             disabled={!serverLive}
           />
-          <button disabled={!serverLive || !url}>Run</button>
+          <button disabled={!serverLive || !url}>Assess</button>
         </form>
         <p className="status-line">
           {serverLive === null
             ? "Checking for the local server…"
             : serverLive
-              ? "Connected. A live run takes about ten minutes."
-              : "Live runs need the local server. Saved runs work anywhere."}
+              ? "Connected. An assessment takes about ten minutes. Press releases and case studies work best."
+              : "Live assessments need the local server. Saved runs work anywhere."}
         </p>
         {err && <p className="error">{err}</p>}
 
-        <h2 className="runs-title">Saved runs</h2>
+        <h2 className="how-title">How it works</h2>
+        <ol className="how">
+          <li><b>Reads the page.</b> Every claim is quoted word for word, or dropped.</li>
+          <li><b>Tests each claim.</b> Searches for independent sources, then argues against it.</li>
+          <li><b>Remembers.</b> Starts from earlier looks at the company and similar companies.</li>
+          <li><b>Builds the model.</b> The AI designs it; code does every sum.</li>
+          <li><b>Asks.</b> Five founder questions, ranked by how much each answer moves the result.</li>
+        </ol>
+
+        <div className="shift">
+          <div className="shift-before">
+            <h2>Today</h2>
+            <p>Each look at a company starts from a blank page.</p>
+          </div>
+          <div className="shift-after">
+            <h2>With this</h2>
+            <p>Each look starts from the last one and ends in questions for the founder.</p>
+          </div>
+        </div>
+      </div>
+
+      <aside className="start-runs">
+        <h2>Saved runs</h2>
         <div className="replays">
           {replays.map((r) => (
             <button key={r.file} className="replay-card" onClick={() => onReplay(r.file)}>
@@ -181,7 +193,7 @@ function Start({ onReplay, onLive }: { onReplay: (f: string) => void; onLive: (u
           ))}
         </div>
         <p className="fineprint">Illustrative, public data only. Not Blume's or the company's figures.</p>
-      </div>
+      </aside>
     </div>
   );
 }
@@ -207,11 +219,8 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, Override>>({});
-  const [view, setView] = useState<"summary" | "working">("summary");
-  const openNode = (id: string) => {
-    setSelected(id);
-    setView("working");
-  };
+  const [view, setView] = useState<View>("summary");
+  const openNode = (_id: string) => setView("working");
 
   useEffect(() => setOverrides({}), [s.revision, s.runId]);
 
@@ -250,6 +259,15 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
         <TopBar s={s} view={view} setView={setView} onHome={onHome} />
         {view === "summary" ? (
           <Summary s={s} assumptions={assumptions} ev={ev} onOpen={openNode} />
+        ) : view === "working" ? (
+          <Working
+            s={s}
+            assumptions={assumptions}
+            ev={ev}
+            edited={edited}
+            override={(id, o) => setOverrides((x) => ({ ...x, [id]: o }))}
+            reset={(id) => setOverrides(({ [id]: _, ...rest }) => rest)}
+          />
         ) : (
           <>
             <Rail s={s} />
@@ -284,16 +302,18 @@ function MapView({ state: s, live, replay, onHome, onWhatIf }: {
             )}
           </>
         )}
-        <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={replay} onWhatIf={onWhatIf} compact={view === "summary"} />
+        <BottomBar s={s} ev={ev} edited={edited.size > 0} live={live} replay={replay} onWhatIf={onWhatIf} compact={view !== "map"} />
       </div>
     </Ctx.Provider>
   );
 }
 
+type View = "summary" | "working" | "map";
+
 function TopBar({ s, view, setView, onHome }: {
   s: State;
-  view: "summary" | "working";
-  setView: (v: "summary" | "working") => void;
+  view: View;
+  setView: (v: View) => void;
   onHome: () => void;
 }) {
   const followUp = s.memory.some((m) => m.role === "history");
@@ -314,7 +334,8 @@ function TopBar({ s, view, setView, onHome }: {
       <span className={`tb-status ${s.finished ? "" : "live"}`}>{status}</span>
       <div className="seg" role="tablist" aria-label="View">
         <button role="tab" aria-selected={view === "summary"} onClick={() => setView("summary")}>Summary</button>
-        <button role="tab" aria-selected={view === "working"} onClick={() => setView("working")}>Show the working</button>
+        <button role="tab" aria-selected={view === "working"} onClick={() => setView("working")}>Working</button>
+        <button role="tab" aria-selected={view === "map"} onClick={() => setView("map")}>Map</button>
       </div>
     </header>
   );
@@ -575,7 +596,7 @@ function AssumptionEditor({ a, live, override, reset, onWhatIf }: {
   const valid = v.low <= v.base && v.base <= v.high;
   return (
     <>
-      <div className="eyebrow">{a.judgement_call ? "Judgement call" : "Sourced assumption"}</div>
+      <div className="eyebrow">{a.judgement_call ? "Estimate: no source gave this number" : "Sourced"}</div>
       <h3>{a.label}</h3>
       <div className="muted small">Unit: {a.unit}</div>
       {a.source_url && <a href={a.source_url} target="_blank" rel="noreferrer" className="small">Source ↗</a>}

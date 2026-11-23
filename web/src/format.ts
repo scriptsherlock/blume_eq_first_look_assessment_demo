@@ -10,7 +10,10 @@ export function fmt(v: number, unit = ""): string {
   else if (abs === 0) s = "0";
   else s = v.toPrecision(2);
   if (unit.startsWith("GBP")) return "£" + s + unit.slice(3).replace(/^\//, "/");
-  if (unit === "ratio") return (v * 100).toFixed(0) + "%";
+  if (["ratio", "fraction", "dimensionless", "share"].includes(unit.trim().toLowerCase())) {
+    const pct = v * 100;
+    return (Math.abs(pct) < 10 && pct !== Math.round(pct) ? pct.toFixed(1) : pct.toFixed(0)) + "%";
+  }
   return unit ? `${s} ${unit}` : s;
 }
 

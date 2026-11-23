@@ -96,7 +96,7 @@ export function Card({ data }: NodeProps<Node<CardData>>) {
     body = (
       <>
         <div className="eyebrow">
-          {a.judgement_call ? "Judgement call" : "Sourced"}
+          {a.judgement_call ? "Estimate" : "Sourced"}
           {rank && <span className="pill">#{rank} sensitivity</span>}
           {edited.has(refId) && <span className="pill pill-edit">edited</span>}
         </div>

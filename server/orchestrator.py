@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from . import llm, references
 from .agents import extractor, modeller, questioner, researcher, sceptic
 from .evaluator import evaluate
-from .fetch import fetch
+from .fetch import PageUnreadable, fetch
 from .llm import SearchUnavailable
 from .memory import Memory, Record, diff
 from .references import References
@@ -225,6 +225,8 @@ def run(run_id: str, url: str) -> None:
         log.emit("run_finished", models={"main": llm.MODEL_FAST, "strong": llm.MODEL_STRONG,
                                          "fallback_calls": len(llm.FALLBACK_USED)})
         _remember(run_id, mem)
+    except PageUnreadable as e:
+        log.emit("error", message=str(e))
     except Exception as e:  # surface every failure on the canvas
         log.emit("error", message=f"{type(e).__name__}: {e}")
 

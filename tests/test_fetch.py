@@ -26,3 +26,23 @@ def test_extracts_paragraphs_from_html():
     assert title == "T"
     assert "4 million carbon miles" in text
     assert "menu" not in text
+
+
+def test_blocked_sites_get_a_plain_message(monkeypatch):
+    import httpx
+    import pytest
+    from server import fetch as f
+
+    class Resp:
+        status_code = 403
+        text = ""
+
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: Resp())
+    with pytest.raises(f.PageUnreadable, match="refuses automated readers"):
+        f.fetch("https://example.com")
+
+    def boom(*a, **k):
+        raise httpx.ReadError("closed")
+    monkeypatch.setattr(httpx, "get", boom)
+    with pytest.raises(f.PageUnreadable, match="block automated readers"):
+        f.fetch("https://example.com")
