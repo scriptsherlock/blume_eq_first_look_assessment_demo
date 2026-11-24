@@ -1,82 +1,75 @@
-# Evidence Map
+# First Look Assessment
 
-**A first-look assessment, redesigned with AI.** Paste a company page. Agents pull out every claim, look for independent evidence, argue against each claim, build one model that links customer value to emissions avoided, and finish with the five questions most worth asking the founder. It all happens live on a canvas.
+**Screening, redesigned with AI.** Paste a page about a company. A team of AI agents reads every claim, looks for independent evidence, argues against each claim, and builds a small model of what the product is worth to customers and to the climate. The output is not a summary. It is the questions most worth asking the founder, ranked by how much each answer would change the result.
+
+**Live demo:** https://scriptsherlock.github.io/blume_eq_first_look_assessment_demo/ (saved runs, no key needed)
 
 > Illustrative, public data only. Not Blume Equity's or any company's figures.
 
-## How this changes the task
+## The task it changes
 
-| | Today | With Evidence Map |
+Before a founder call, someone has to decide what to believe about a company and what to ask. Today that usually means rereading a press release, copying numbers into a spreadsheet and guessing the gaps, and the next look at the same company starts again from scratch. Blume tracked CameraMatics and SPARETECH from 2024 before investing in 2026, so most companies get many looks.
+
+| | Today | With First Look Assessment |
 |---|---|---|
-| Starting point | A blank spreadsheet for every company, every time | Everything the firm learned at earlier looks at this company, retrieved from memory |
-| Unknowns | A fresh personal guess each time | A guess checked against how the firm sized similar drivers at other companies, with the comparable cited |
-| Claims | Read and believed, or not, from the deck | Each one quoted, challenged by a sceptic and given a verdict |
-| What carries over | Whatever is in someone's notes | Claims, verdicts, assumptions and open questions, per company and dated |
-| The analyst's job | Compiling | Deciding which uncertainty to resolve next, and asking the founder for it |
+| Starting point | A blank spreadsheet, every time | Everything learned at earlier looks at this company |
+| Claims | Believed, or not, from the page | Quoted word for word, challenged, and given a verdict |
+| Unknowns | A fresh guess each time | A labelled estimate with a range, anchored in how similar numbers were sized at other companies |
+| Output | A summary of what the company says | Founder questions, ranked by how much each answer matters |
+| Between looks | Whatever is in someone's notes | What changed, and which questions are still open |
 
-Blume tracked CameraMatics and SPARETECH from 2024 before investing in 2026. The value is not one fast first look; it is a view that sharpens with every look.
+## What you see
 
-## The task it redesigns
+- **Summary:** the two results (customer value in £ a year, carbon avoided in tonnes a year) with their ranges, the founder questions, and every claim with its verdict.
+- **Working:** each claim set against the strongest challenge to it, the model as plain equations, and every number with its source or "Estimate" label. Change any number and both results recompute.
+- **Map:** a replay of the agents building the assessment step by step.
 
-When a pipeline company looks promising, an analyst has to decide what to believe about its claims before the next founder call. Today that means reading a deck and building a spreadsheet by hand. Here, the model does the reading, research, challenge and model design; the analyst checks, edits and decides.
-
-The example is Blume's own post on Vyntelligence, which says that *"reducing field visits by 50% saves approximately 4 million carbon miles annually"*. One avoided site visit saves the customer money and avoids van emissions, so the model uses one shared driver for both outputs.
+The example runs use Blume's own posts on Vyntelligence, CameraMatics and SPARETECH. Vyntelligence's post says that *"reducing field visits by 50% saves approximately 4 million carbon miles annually"*. One avoided site visit saves the customer money and avoids van emissions, so the model uses that one driver for both results, and the commercial and climate cases cannot drift apart.
 
 ## How it works
 
-| Agent | Does | Guardrail |
+Five agents, each with one job. Code checks every step.
+
+| Agent | Job | What code checks |
 |---|---|---|
-| Extractor | Pulls up to 8 claims from the page, each with a quote | A claim is dropped unless its quote is found verbatim on the page |
-| Researcher | A small search agent: plans queries, searches the web (DuckDuckGo, no key needed), reads the pages, and judges each one | Code reads the pages and supplies the links; the model must quote an exact sentence from a page, and code checks it is there. The company's own site and the source page are excluded |
-| Sceptic | Raises the strongest objections and gives a verdict: supported, needs evidence, or not attributable | Each objection names the data that would resolve it |
-| Modeller | Designs a driver tree with two roots: customer value (£/yr) and emissions avoided (tCO2e/yr) | Every assumption is sourced or flagged as a judgement call with a low/base/high range. Code checks every model (see below) and sends it back with the reasons, up to two times; repairs show on the canvas |
-| Evaluator | Computes the tree, the low/high envelope and the sensitivity ranking | Plain code, not the model |
-| Questioner | Writes five founder questions, ranked by how much each answer moves the result | Each question targets a real assumption |
+| Reader | Pulls up to 8 claims from the page, each with a quote | The quote must appear word for word on the page, or the claim is dropped |
+| Researcher | Plans its own searches, reads the pages it finds, and judges whether each supports or contradicts the claim | It must quote a sentence that code finds on the page. The company's own site doesn't count as independent |
+| Sceptic | Argues against each claim and gives a verdict: supported, needs evidence, or not caused by the product | Each objection names the data that would settle it |
+| Modeller | Designs the model: one shared driver feeding both results, every number sourced or marked as an estimate with a low, best-guess and high value | Units, currencies, emission factors, exchange rates, and that both results share a driver. A model that fails goes back with the reasons |
+| Questioner | Writes up to five founder questions, aimed at the numbers that move the result most | Each question must target a real number in the model |
 
-### Company memory (RAG)
+Plain code, not the AI, does every sum: the results, the ranges, and the ranking of which unknown matters most.
 
-Every finished run is broken into records (claims with verdicts and objections, final assumptions, founder questions), embedded with `gemini-embedding-001` and stored per company and date (`server/memory.py`). On a new run:
+### Checks on the model
 
-1. **History.** Code looks up earlier looks at the same company and gives them to the Modeller, which starts from the last sizing instead of guessing again, citing the memory id. If it cites an earlier sourced value, code restores that source rather than letting it become a guess.
-2. **Comparables.** After the first draft, code retrieves, for each remaining judgement call, how the firm sized similar drivers at *other* companies. Retrieval combines embedding similarity with a unit-shape filter (money matches money, emission factors match emission factors, fractions match fractions), because similarity alone rates loosely related drivers too highly. The Modeller then revisits each guess, cites the comparables it used and says which it ignored and why.
-3. **Since last look.** Code (not the model) compares this run with the last: new, repeated and dropped claims, verdict changes, ranges that narrowed or widened, and which founder questions are still open. Questions still open are flagged for the next call.
-4. **Remember.** The run is stored, so the next look starts from it. A what-if change by the analyst is stored too.
+- **Units:** each result's unit, worked out from its inputs, must match its label. This caught a model that multiplied miles by £ per visit (20× too high) and one that reported kilograms of CO2e as tonnes (1,000× too high).
+- **Currency:** a dollar figure stays in dollars until it is converted at the ECB rate. This caught a run that read "$169 million" as pounds.
+- **Emission factors:** any CO2e-per-unit figure must cite a row of the UK government tables below and match it. This caught an invented factor about 300× too high.
+- **Exchange rates:** must cite and match the day's ECB reference rates.
+- **Structure:** both results share at least one input, credit for causing the effect applies to both or neither, and every step feeds a result.
 
-Memory items appear as purple cards on the canvas, linked to the assumptions that cite them. Every cited memory id is checked against what was actually retrieved.
+### Memory (RAG)
 
-The store is a JSONL file with brute-force cosine search, which is fast at pipeline scale (hundreds of companies, thousands of records). Rebuild it from saved runs with `python -m scripts.rebuild_memory`.
+Every finished run is saved as records (claims with verdicts, numbers with ranges, founder questions), each with an embedding from `gemini-embedding-001`, stored by company and date. On the next run:
 
-### What the checks enforce
+1. **History:** earlier looks at the same company are retrieved and given to the Modeller, which starts from them and cites what it reuses.
+2. **Comparables:** for each estimate, the closest numbers from other companies' runs are retrieved by meaning, filtered so that £ matches £ and emission factors match emission factors. The Modeller adjusts its guess or says why this company differs.
+3. **Since last look:** code compares this look with the last one (new claims, changed verdicts, ranges that narrowed or widened) and marks founder questions that are still unanswered.
 
-- **Structure:** no cycles or missing nodes; every assumption sourced or flagged; low ≤ base ≤ high.
-- **One shared driver:** customer value and emissions avoided must both be computed from at least one common input, and an attribution share must apply to both or neither.
-- **Currency:** each number's currency is tracked through the tree. A figure taken from a dollar claim must stay in USD and be converted with an exchange-rate assumption; amounts in different currencies cannot be added; the value root must come out in GBP and the emissions root in no currency.
-- **Exchange rates:** must cite and match the day's [ECB euro reference rates](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml), converted to GBP (saved snapshot used offline).
-- **Emission factors:** any CO2e-per-unit number that is not the company's own claim must cite a row from one of two official tables, and its base must match that row:
-  - [UK Government GHG conversion factors 2025](https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2025) for vehicle activity (per km or mile);
-  - [DEFRA / University of Leeds spend-based multipliers, SIC, 2023](https://www.gov.uk/government/statistics/uks-carbon-footprint) for spending on goods and services (kgCO2e per £, excluding VAT).
-
-  Low and high may use neighbouring rows but are kept within half to double the base.
-
-**The model does the judgement; code does the arithmetic.** On the canvas you can click any claim to see its quote, evidence and objections, edit any assumption and watch both outputs recompute, or, in a live run, type a what-if ("only a third of visits are avoidable") and the Modeller rebuilds the tree.
-
-Every run is saved as an event log. The front end is a pure function of that log, so any run can be replayed exactly, without a key.
+Code checks that the model only cites memories it was actually given. The store is a JSONL file searched directly, which takes milliseconds at a fund's scale. The same interface could sit on a vector database such as pgvector once memory grows to data-room documents.
 
 ## Status
 
-First pass, running on `gemini-3.5-flash-lite`.
+- **Saved runs are real agent output** from live runs on Blume's public posts: first looks at Vyntelligence, CameraMatics and SPARETECH, and a second look at Vyntelligence from a later post. On the second look the new page added four claims but answered none of the four earlier questions, so all four come back marked "still open".
+- **The saved runs were recorded before web search was reliable,** so most of their claims read "needs evidence". Search now works without a paid key: it tries Bing, Google, Yahoo and DuckDuckGo in turn, because each free engine refuses automated queries some of the time. In new test runs it found outside sources for 3 of the 5 Vyntelligence claims, including a page giving 82%, not 85%, for the fines reduction.
+- **Runs on `gemini-3.5-flash-lite`,** retrying when the model is busy. A run that stops at the model step can be finished later without redoing the research.
+- **95 Python tests** and a check that the browser and server calculate the same numbers. None need a key.
 
-- **Saved runs are real agent output.** First looks at Vyntelligence, CameraMatics and SPARETECH, and a second look at Vyntelligence from a later Blume page, were recorded from live runs on Blume's public posts. The second look starts from the first in memory: it reuses earlier sizings, checks its guesses against CameraMatics and SPARETECH, and finds that the new page adds five claims but answers none of last time's four questions, so they come back flagged as still open. Every quote is checked against the saved page text, every final model passes the checks above, and the browser and server evaluators agree on every number.
-- **Web search runs without a paid key.** The free Gemini tier has no Google Search quota, so the Researcher searches DuckDuckGo itself (unofficial, can be throttled) and uses Gemini only to plan queries and judge pages. The saved runs were recorded before this, so their claims show "needs evidence"; new live runs search. If search fails twice in a row, the run carries on and says so. `SEARCH_PROVIDER=gemini` switches to Google Search grounding for a key that has search quota.
-- **Why the currency and emission-factor checks exist.** An earlier SPARETECH run treated "$169 million" as pounds and invented an emission factor of 0.15 tCO2e per £. DEFRA's figure for machinery is about 0.51 kg per £, so the invented one was roughly 300 times too high, and the run claimed millions of tonnes for one company. With the checks, the same page gives about £20M a year and 10,500 tCO2e a year for an average customer, with the dollar figure converted at the ECB rate and the DEFRA row cited.
-- Calls retry on rate limits and overload, falling back to `gemini-3.1-flash-lite` if 3.5 stays unavailable.
-- 79 Python tests and a browser/server evaluator parity test, all runnable without a key.
-
-Not done yet: recording founder answers directly into memory (so a question can be closed with data), a second look at CameraMatics, full unit checks beyond currency (miles vs km, kg vs t), and a recorded run with web search on. Spend-based multipliers are national averages of supply-chain emissions, so they suit a first look, not a reported footprint.
+Next: test on real deals and data-room documents, record founders' answers into memory so questions can be closed with data, and re-record the saved runs with search on.
 
 ## Run it
 
-Static replay only (no key):
+Saved runs only (no key):
 
 ```bash
 cd web
@@ -87,17 +80,18 @@ npm run dev          # http://localhost:5173
 Live runs need a Gemini key from Google AI Studio:
 
 ```bash
-cp .env.example .env               # add GEMINI_API_KEY; check the model IDs
+cp .env.example .env               # add GEMINI_API_KEY
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt   # macOS/Linux: .venv/bin/pip
 .venv/Scripts/python -m uvicorn server.main:app --port 8000
-# then start the web app as above; the start screen shows "Local server connected"
+# then start the web app as above; the start page says "Connected"
 ```
 
-Record a live run as a replay:
+Save a live run as a replay, or finish one that stopped at the model step:
 
 ```bash
 .venv/Scripts/python -m scripts.record_replay <url> <name>
+.venv/Scripts/python -m scripts.record_replay --resume <run_id> <name>
 ```
 
 Tests:
@@ -110,15 +104,27 @@ cd web && npm test
 ## Layout
 
 ```
-server/        FastAPI app, orchestrator, agents, prompts, evaluator, guardrails, memory, run store
-server/llm.py  the only file that talks to a model provider
-factors/       UK 2025 vehicle factors, DEFRA 2023 spend multipliers, ECB rate snapshot
-sources/       article text of the public pages used in tests
-scripts/       record a live run; rebuild company memory from saved runs
-web/           React + React Flow canvas; replays in web/public/replays
-tests/         evaluator, replay, fetch and orchestrator tests
+server/          FastAPI app, orchestrator, agents, evaluator, checks, memory, search
+server/prompts/  the agents' instructions
+server/llm.py    the only file that talks to a model provider
+factors/         emission-factor tables and the ECB rate snapshot
+sources/         saved text of the public pages, so tests can check every quote
+scripts/         record or resume a run; rebuild memory from saved runs
+web/             React front end; saved runs in web/public/replays
+tests/           evaluator, checks, memory, search, replay and orchestrator tests
 ```
+
+## Data sources
+
+| File | Source | Licence |
+|---|---|---|
+| `factors/uk_ghg_2025_vehicles.csv` | [UK Government GHG Conversion Factors for Company Reporting 2025](https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2025): cars, vans and HGVs, kg CO2e per km and per mile | Open Government Licence v3.0 |
+| `factors/defra_spend_sic_2023.csv` | [DEFRA / University of Leeds spend-based emission multipliers by SIC code, UK 2023](https://www.gov.uk/government/statistics/uks-carbon-footprint), kg CO2e per £ excluding VAT | Open Government Licence v3.0 |
+| `factors/fx_ecb_snapshot.json` | [ECB euro foreign exchange reference rates](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml), refreshed on each live run; the snapshot is used offline and in tests | Published by the ECB for information |
+| `sources/*.txt` | Text of public Blume Equity posts, saved 16 November 2026. Each file starts with its URL | Used only to test quotes |
+
+Spend-based multipliers are national averages of supply-chain emissions. They suit a first look, not a reported footprint.
 
 ## Why Gemini
 
-The agents run on Gemini Flash-Lite because that is the key I had. All model calls go through `server/llm.py`, so moving to Claude means rewriting that one file. The project itself was built with Claude Code.
+The agents run on Gemini Flash-Lite because that was the key available. All model calls go through `server/llm.py`, so switching providers means rewriting one file. The project was built with Claude Code.
