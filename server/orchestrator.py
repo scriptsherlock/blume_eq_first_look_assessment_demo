@@ -1,6 +1,7 @@
 """Runs the agents in order and emits events as each result lands."""
 from __future__ import annotations
 
+import json
 import sys
 from dataclasses import dataclass, field
 
@@ -203,49 +204,97 @@ def run(run_id: str, url: str) -> None:
                 log.emit("objection_added", "sceptic", objection=o.model_dump())
             log.emit("verdict_set", "sceptic", verdict=verdict.model_dump())
 
-        log.emit("agent_started", "modeller")
-        st.refs = references.load(live_fx=True)
-        repair = lambda found: _emit_repair(log, found)  # noqa: E731
-        draft = modeller.run(st.company, st.claims, st.verdicts, st.objections, st.refs,
-                             history=history_block(st.company, st.history), memory=st.recalled,
-                             on_repair=repair)
-
-        # Memory: how did we size these guesses at other companies?
-        # Every remaining guess, including ones carried over from the last look: a guess repeated is still a guess.
-        # Sourced values are not guesses, and carry_over_sources keeps them sourced.
-        guesses = [a for a in draft.assumptions
-                   if a.judgement_call and "conversion" not in (a.source_note or "").lower()]
-        found: list[tuple[str, Record, float]] = []
-        if guesses and mem.records:
-            log.emit("agent_started", "memory", instruction=f"Finding how the firm sized {len(guesses)} judgement calls before")
-            floor = mem.embedder.match_threshold * 0.75
-            for a in guesses:
-                for r, score in mem.search([f"{a.label} [{a.unit}]"], k=COMPARABLES_PER_GUESS,
-                                           exclude_company=st.company, min_score=floor, unit=a.unit):
-                    if r.id not in {f[1].id for f in found}:
-                        found.append((a.label, r, score))
-            found = sorted(found, key=lambda f: -f[2])[:COMPARABLES_MAX]
-            for label, r, score in found:
-                _recall(log, st, "comparable", r, score, label)
-            log.emit("agent_finished", "memory",
-                     note=f"Found {len(found)} comparable sizings from other companies." if found
-                     else "No close comparables in memory for these judgement calls.")
-
-        if found:
-            log.emit("agent_started", "modeller", instruction="Anchoring judgement calls to the firm's earlier sizings")
-            st.model = modeller.anchor(draft, comparables_block(found), st.refs, st.claims,
-                                       memory=st.recalled, on_repair=repair)
-        else:
-            st.model = draft
-        _emit_model(log, st)
-        _since_last_look(log, st, mem)
-        log.emit("run_finished", models={"main": llm.MODEL_FAST, "strong": llm.MODEL_STRONG,
-                                         "fallback_calls": len(llm.FALLBACK_USED)})
-        _remember(run_id, mem)
+        _model_phase(run_id, log, st, mem)
     except PageUnreadable as e:
         log.emit("error", message=str(e))
     except Exception as e:  # surface every failure on the canvas
         log.emit("error", message=f"{type(e).__name__}: {e}")
+
+
+def resume(run_id: str, from_run: str) -> None:
+    """Finish a run that stopped at the model step (usually Gemini busy) without redoing the research.
+
+    Copies the earlier run's events up to the model step into a new log, rebuilds the state from them,
+    and carries on. The new log replays as one unbroken run.
+    """
+    old = RunLog(from_run).events
+    cut = next((i for i, e in enumerate(old) if e["type"] == "agent_started" and e.get("agent") == "modeller"), None)
+    if cut is None or any(e["type"] == "error" for e in old[:cut]) or not old or old[0]["type"] != "run_started":
+        raise ValueError(f"run {from_run} did not finish its research, so there is nothing to resume")
+    log = RunLog(run_id)
+    if log.path.exists():
+        raise ValueError(f"run {run_id} already exists")
+    with log.path.open("w", encoding="utf-8") as f:
+        for seq, e in enumerate(old[:cut]):
+            f.write(json.dumps({**e, "run_id": run_id, "seq": seq}, ensure_ascii=False) + "\n")
+
+    st = STATES.setdefault(run_id, RunState())
+    llm.FALLBACK_USED.clear()
+    mem = Memory()
+    by_id = {r.id: r for r in mem.records}
+    for e in old[:cut]:
+        p = e["payload"]
+        if e["type"] == "agent_finished" and e.get("agent") == "extractor":
+            st.company = p.get("company", "")
+        elif e["type"] == "claim_added":
+            st.claims.append(Claim.model_validate(p["claim"]))
+        elif e["type"] == "objection_added":
+            st.objections.append(Objection.model_validate(p["objection"]))
+        elif e["type"] == "verdict_set":
+            v = Verdict.model_validate(p["verdict"])
+            st.verdicts[v.claim_id] = v
+        elif e["type"] == "memory_recalled" and p["record"]["id"] in by_id:
+            r = by_id[p["record"]["id"]]
+            st.recalled[r.id] = r
+            if p.get("role") == "history":
+                st.history.append(r)
+    try:
+        _model_phase(run_id, log, st, mem)
+    except Exception as e:
+        log.emit("error", message=f"{type(e).__name__}: {e}")
+
+
+def _model_phase(run_id: str, log: RunLog, st: RunState, mem: Memory) -> None:
+    """Model, comparables, questions, comparison with the last look, and memory. Raises on failure."""
+    log.emit("agent_started", "modeller")
+    st.refs = references.load(live_fx=True)
+    repair = lambda found: _emit_repair(log, found)  # noqa: E731
+    draft = modeller.run(st.company, st.claims, st.verdicts, st.objections, st.refs,
+                         history=history_block(st.company, st.history), memory=st.recalled,
+                         on_repair=repair)
+
+    # Memory: how did we size these guesses at other companies?
+    # Every remaining guess, including ones carried over from the last look: a guess repeated is still a guess.
+    # Sourced values are not guesses, and carry_over_sources keeps them sourced.
+    guesses = [a for a in draft.assumptions
+               if a.judgement_call and "conversion" not in (a.source_note or "").lower()]
+    found: list[tuple[str, Record, float]] = []
+    if guesses and mem.records:
+        log.emit("agent_started", "memory", instruction=f"Finding how the firm sized {len(guesses)} judgement calls before")
+        floor = mem.embedder.match_threshold * 0.75
+        for a in guesses:
+            for r, score in mem.search([f"{a.label} [{a.unit}]"], k=COMPARABLES_PER_GUESS,
+                                       exclude_company=st.company, min_score=floor, unit=a.unit):
+                if r.id not in {f[1].id for f in found}:
+                    found.append((a.label, r, score))
+        found = sorted(found, key=lambda f: -f[2])[:COMPARABLES_MAX]
+        for label, r, score in found:
+            _recall(log, st, "comparable", r, score, label)
+        log.emit("agent_finished", "memory",
+                 note=f"Found {len(found)} comparable sizings from other companies." if found
+                 else "No close comparables in memory for these judgement calls.")
+
+    if found:
+        log.emit("agent_started", "modeller", instruction="Anchoring judgement calls to the firm's earlier sizings")
+        st.model = modeller.anchor(draft, comparables_block(found), st.refs, st.claims,
+                                   memory=st.recalled, on_repair=repair)
+    else:
+        st.model = draft
+    _emit_model(log, st)
+    _since_last_look(log, st, mem)
+    log.emit("run_finished", models={"main": llm.MODEL_FAST, "strong": llm.MODEL_STRONG,
+                                     "fallback_calls": len(llm.FALLBACK_USED)})
+    _remember(run_id, mem)
 
 
 def whatif(run_id: str, instruction: str) -> None:

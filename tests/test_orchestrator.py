@@ -221,3 +221,36 @@ def test_one_busy_call_does_not_end_the_run(stubbed, monkeypatch):
     notes = [e["payload"].get("note", "") for e in evs if e["type"] == "agent_finished"]
     assert any("Couldn't argue against" in n and "busy" in n for n in notes)
     assert [e for e in evs if e["type"] == "question_added"]
+
+
+def test_resume_finishes_a_run_that_stopped_at_the_model(stubbed, monkeypatch):
+    from server.agents import modeller as modeller_agent
+    real_run = modeller_agent.run
+
+    def busy(*a, **k):
+        raise RuntimeError("503 UNAVAILABLE")
+    monkeypatch.setattr(modeller_agent, "run", busy)
+    orchestrator.run("abc1234570", URL)
+    first = store.RunLog("abc1234570").events
+    assert first[-1]["type"] == "error"
+
+    monkeypatch.setattr(modeller_agent, "run", real_run)
+    calls = []
+    monkeypatch.setattr(orchestrator.researcher, "run", lambda *a, **k: calls.append(a) or [])
+    monkeypatch.setattr(orchestrator.sceptic, "run", lambda *a, **k: calls.append(a))
+    orchestrator.resume("abc1234571", "abc1234570")
+    evs = store.RunLog("abc1234571").events
+    assert not calls  # research is not redone
+    assert evs[-1]["type"] == "run_finished", evs[-1]
+    assert [e["seq"] for e in evs] == list(range(len(evs)))
+    assert {e["run_id"] for e in evs} == {"abc1234571"}
+    assert not [e for e in evs if e["type"] == "error"]
+    copied = [e["type"] for e in first if e["type"] in ("claim_added", "evidence_added", "verdict_set")]
+    assert [e["type"] for e in evs if e["type"] in ("claim_added", "evidence_added", "verdict_set")] == copied
+    assert [e for e in evs if e["type"] == "question_added"]
+
+
+def test_resume_refuses_a_run_without_research(stubbed):
+    store.RunLog("abc1234572").emit("run_started", url=URL)
+    with pytest.raises(ValueError):
+        orchestrator.resume("abc1234573", "abc1234572")

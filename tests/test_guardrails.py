@@ -143,7 +143,7 @@ def test_company_claimed_emissions_are_left_to_the_sceptic():
 def test_problems_lists_every_failure_for_one_repair():
     out = good_model()
     out.assumptions[0].unit = "GBP"
-    out.assumptions[4] = A("ef", 0.05, 0.15, 0.3, "tCO2e/GBP")
+    out.assumptions[4] = A("ef", 0.05, 0.15, 0.3, "kgCO2e/GBP")  # invented, uncited
     found = modeller.problems(out, REFS, CLAIMS)
     assert len(found) == 2
 
@@ -170,3 +170,63 @@ def test_repairs_are_reported(monkeypatch):
     out = modeller._build("p", REFS, CLAIMS, on_repair=seen.append)
     assert out is good
     assert len(seen) == 1 and "USD" in seen[0][0]
+
+
+# ---------------------------------------------------------------- units and dead ends
+
+def visits_model(value_children=("i_cost", "visits")):
+    """Vyntelligence shape: miles avoided -> visits -> GBP, and the same miles -> tCO2e."""
+    a = [
+        A("miles", 2e6, 4e6, 8e6, "miles/yr", claim_ids=["c1"], source_url=URL),
+        A("attr", 0.3, 0.5, 0.8, "fraction"),
+        A("mpv", 10, 20, 40, "miles/visit"),
+        A("cost", 50, 100, 200, "GBP/visit"),
+        A("ef", 0.3, 0.41, 0.5, "kg CO2e/mile"),
+        A("kg_t", 0.001, 0.001, 0.001, "tonnes/kg", source_note="unit conversion"),
+    ]
+    n = [I("i_miles", "miles"), I("i_attr", "attr"), I("i_mpv", "mpv"), I("i_cost", "cost"),
+         I("i_ef", "ef"), I("i_kgt", "kg_t"),
+         M("avoided", "i_miles", "i_attr", unit="miles/yr"),
+         Node(id="visits", label="Visits avoided", op="divide", children=["avoided", "i_mpv"], unit="visits/yr"),
+         M("value", *value_children, unit="GBP/yr"),
+         M("impact", "avoided", "i_ef", "i_kgt", unit="tCO2e/yr")]
+    return ModellerOut(assumptions=a, tree=DriverTree(root_value_id="value", root_impact_id="impact", nodes=n),
+                       rationale="r")
+
+
+def test_unit_parsing():
+    from server.guardrails import unit_dims
+    assert unit_dims("kg CO2e/mile") == {"kg": 1, "co2e": 1, "mile": -1}
+    assert unit_dims("tonnes/kg") == {"t": 1, "kg": -1}
+    assert unit_dims("miles/vehicle/yr") == {"mile": 1, "vehicle": -1, "yr": -1}
+    assert unit_dims("% fines reduction") == {}
+    assert unit_dims("1/yr") == {"yr": -1}
+    assert unit_dims("million carbon miles") is None  # free text: skip, don't guess
+
+
+def test_correct_visits_model_passes():
+    from server.guardrails import check_units
+    check_units(visits_model())
+    check_units(good_model())
+
+
+def test_rejects_miles_times_gbp_per_visit():
+    # The real Vyntelligence failure: miles x GBP/visit labelled GBP/yr, 20x too high.
+    from server.guardrails import check_units
+    out = visits_model(value_children=("avoided", "i_cost"))
+    with pytest.raises(GuardrailError, match="miles per visit"):
+        check_units(out)
+
+
+def test_rejects_kg_labelled_as_tonnes():
+    from server.guardrails import check_units
+    out = visits_model()
+    out.tree.nodes[-1].children = ["avoided", "i_ef"]  # forgot kg -> t
+    with pytest.raises(GuardrailError, match="t/kg"):
+        check_units(out)
+
+
+def test_rejects_step_that_feeds_neither_root():
+    out = visits_model(value_children=("avoided", "i_cost"))
+    found = modeller.problems(out)
+    assert any("feed neither root" in p and "Visits avoided" in p for p in found)

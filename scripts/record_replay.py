@@ -2,6 +2,10 @@
 
 Usage (needs GEMINI_API_KEY in .env):
     .venv/Scripts/python -m scripts.record_replay <url> <name>
+    .venv/Scripts/python -m scripts.record_replay --resume <run_id> <name>
+
+--resume finishes a run that stopped at the model step (usually "Gemini is busy")
+without redoing the reading, searching and arguing.
 
 Writes web/public/replays/<name>.jsonl and adds it to the replay index.
 """
@@ -22,10 +26,14 @@ from server.store import RUNS_DIR, load  # noqa: E402
 REPLAYS = ROOT / "web" / "public" / "replays"
 
 
-def main(url: str, name: str) -> None:
+def main(url: str, name: str, resume_from: str | None = None) -> None:
     run_id = uuid.uuid4().hex[:10]
-    print(f"running {url} as {run_id} ...")
-    orchestrator.run(run_id, url)
+    if resume_from:
+        print(f"resuming {resume_from} as {run_id} ...")
+        orchestrator.resume(run_id, resume_from)
+    else:
+        print(f"running {url} as {run_id} ...")
+        orchestrator.run(run_id, url)
     src = RUNS_DIR / f"{run_id}.jsonl"
     events = load(src)
     last = events[-1]
@@ -45,7 +53,11 @@ def main(url: str, name: str) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    args = sys.argv[1:]
+    if len(args) == 3 and args[0] == "--resume":
+        main("", args[2], resume_from=args[1])
+    elif len(args) == 2:
+        main(args[0], args[1])
+    else:
         print(__doc__)
         sys.exit(2)
-    main(sys.argv[1], sys.argv[2])

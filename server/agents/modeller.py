@@ -63,6 +63,25 @@ def _shared_driver(out: ModellerOut) -> None:
                 )
 
 
+def _no_dead_ends(out: ModellerOut) -> None:
+    """Every node must feed a root. A step worked out and then ignored usually means a wrong link."""
+    nodes = {n.id: n for n in out.tree.nodes}
+    seen, stack = set(), [out.tree.root_value_id, out.tree.root_impact_id]
+    while stack:
+        nid = stack.pop()
+        if nid in seen or nid not in nodes:
+            continue
+        seen.add(nid)
+        stack.extend(nodes[nid].children)
+    unused = [n for n in out.tree.nodes if n.id not in seen]
+    if unused:
+        names = ", ".join(f"{n.id} ('{n.label}')" for n in unused)
+        raise TreeError(
+            f"{names} feed{'s' if len(unused) == 1 else ''} neither root. Either use it where it belongs "
+            "(for example, multiply visits avoided by cost per visit) or remove it."
+        )
+
+
 MEM_ID = re.compile(r"mem-[0-9a-f]{8}")
 
 
@@ -107,7 +126,7 @@ def problems(out: ModellerOut, refs: References | None = None, claims: list[Clai
     except TreeError as e:
         return [str(e)]  # the other checks need a sound tree
     found = []
-    checks = [_shared_driver]
+    checks = [_shared_driver, _no_dead_ends, guardrails.check_units]
     if refs is not None:
         checks += [lambda o: guardrails.check_currency(o, list(claims)), lambda o: guardrails.check_factors(o, refs)]
     if memory is not None:

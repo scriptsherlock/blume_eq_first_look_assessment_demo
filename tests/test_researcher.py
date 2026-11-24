@@ -75,10 +75,45 @@ def test_no_results_is_not_a_failure(monkeypatch):
         pass
 
     class FakeDDGS:
-        def text(self, q, max_results=5):
+        def text(self, q, max_results=5, backend="auto"):
             raise Empty("No results found.")
 
     import ddgs
     monkeypatch.setattr(ddgs, "DDGS", FakeDDGS)
     monkeypatch.setattr(search, "PAUSE_S", 0)
     assert search.web_search("anything") == []
+
+
+def test_falls_through_to_next_backend_and_drops_ads(monkeypatch):
+    tried = []
+
+    class FakeDDGS:
+        def text(self, q, max_results=5, backend="auto"):
+            tried.append(backend)
+            if backend == "bing":
+                raise Exception("No results found.")  # throttled, reported as empty
+            return [
+                {"href": "https://www.bing.com/aclick?ld=abc", "title": "Ad", "body": ""},
+                {"href": "https://example.org/report", "title": "Report", "body": "text"},
+            ]
+
+    import ddgs
+    monkeypatch.setattr(ddgs, "DDGS", FakeDDGS)
+    monkeypatch.setattr(search, "PAUSE_S", 0)
+    monkeypatch.setenv("SEARCH_BACKENDS", "bing,google,yahoo")
+    hits = search.web_search("anything")
+    assert tried == ["bing", "google"]
+    assert [h.url for h in hits] == ["https://example.org/report"]
+
+
+def test_raises_only_when_every_backend_errors(monkeypatch):
+    class FakeDDGS:
+        def text(self, q, max_results=5, backend="auto"):
+            raise TimeoutError("network down")
+
+    import ddgs
+    monkeypatch.setattr(ddgs, "DDGS", FakeDDGS)
+    monkeypatch.setattr(search, "PAUSE_S", 0)
+    monkeypatch.setenv("SEARCH_BACKENDS", "bing,google")
+    with pytest.raises(TimeoutError):
+        search.web_search("anything")

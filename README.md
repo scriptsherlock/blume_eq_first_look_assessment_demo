@@ -14,7 +14,7 @@
 | What carries over | Whatever is in someone's notes | Claims, verdicts, assumptions and open questions, per company and dated |
 | The analyst's job | Compiling | Deciding which uncertainty to resolve next, and asking the founder for it |
 
-Blume tracked CameraMatics and SPARETECH for two years before investing. The value is not one fast first look; it is a view that sharpens with every look.
+Blume tracked CameraMatics and SPARETECH from 2024 before investing in 2026. The value is not one fast first look; it is a view that sharpens with every look.
 
 ## The task it redesigns
 
