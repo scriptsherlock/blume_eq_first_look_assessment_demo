@@ -14,9 +14,5 @@ runs/
 web/node_modules/
 web/dist/
 
-# private application notes, not part of the demo
-Investor AI pain points and niches.md
-plan.md
-
 # company memory (rebuild with scripts/rebuild_memory.py)
 memory/
